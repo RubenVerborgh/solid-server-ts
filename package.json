@@ -7,7 +7,8 @@
     "watch": "jest --watch"
   },
   "dependencies": {
-    "express": "^4.16.3"
+    "express": "^4.16.3",
+    "standard-http-error": "^2.0.1"
   },
   "devDependencies": {
     "@types/express": "^4.16.0",
