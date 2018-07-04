@@ -1,0 +1,21 @@
+{
+  "scripts": {
+    "build": "tsc",
+    "jest": "jest",
+    "lint": "tslint src/**/*.ts",
+    "test": "npm run lint && npm run jest",
+    "watch": "jest --watch"
+  },
+  "devDependencies": {
+    "@types/jest": "^23.1.4",
+    "@types/node": "^10.5.1",
+    "jest": "^23.2.0",
+    "pre-commit": "^1.2.2",
+    "ts-jest": "^23.0.0",
+    "tslint": "^5.10.0",
+    "typescript": "^2.9.2"
+  },
+  "pre-commit": [
+    "test"
+  ]
+}
