@@ -6,10 +6,15 @@
     "test": "npm run lint && npm run jest",
     "watch": "jest --watch"
   },
+  "dependencies": {
+    "express": "^4.16.3"
+  },
   "devDependencies": {
+    "@types/express": "^4.16.0",
     "@types/jest": "^23.1.4",
     "@types/node": "^10.5.1",
     "jest": "^23.2.0",
+    "node-mocks-http": "^1.7.0",
     "pre-commit": "^1.2.2",
     "ts-jest": "^23.0.0",
     "tslint": "^5.10.0",
