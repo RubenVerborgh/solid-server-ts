@@ -1,6 +1,8 @@
 import * as http from 'http';
 
 import HttpError from 'standard-http-error';
+
+import PermissionSet from '../auth/PermissionSet';
 import MethodExtractor from './MethodExtractor';
 import TargetExtractor from './TargetExtractor';
 
@@ -38,11 +40,12 @@ export default class DataStoreRequestHandler {
    * @param response - The HTTP response
    */
   protected async _handleRequest(request: http.IncomingMessage, response: http.ServerResponse) {
-    // Extract and validate the method
+    // Extract and validate the method and the associated required permissions
     const method = this.methodExtractor.extract(request);
-    if (!/^(GET|HEAD|OPTIONS|POST|PUT|DELETE|PATCH)$/.test(method)) {
+    if (!METHOD_PERMISSIONS.hasOwnProperty(method)) {
       throw new HttpError(HttpError.METHOD_NOT_ALLOWED);
     }
+    const requiredPermissions = METHOD_PERMISSIONS[method].clone();
 
     // Extract and validate the target
     let target;
@@ -53,6 +56,23 @@ export default class DataStoreRequestHandler {
     }
 
     // Generate a response
-    response.end(JSON.stringify({ method, target }));
+    response.end(JSON.stringify({ method, requiredPermissions, target }));
   }
 }
+
+// Common permission sets
+const READ_ONLY = new PermissionSet({ read: true });
+const WRITE_ONLY = new PermissionSet({ write: true });
+const APPEND_ONLY = new PermissionSet({ append: true });
+const READ_WRITE = new PermissionSet({ read: true, write: true });
+
+// Required permissions per HTTP method
+const METHOD_PERMISSIONS: { [key: string]: PermissionSet } = {
+  GET: READ_ONLY,
+  HEAD: READ_ONLY,
+  OPTIONS: READ_ONLY,
+  POST: APPEND_ONLY,
+  PUT: WRITE_ONLY,
+  DELETE: WRITE_ONLY,
+  PATCH: READ_WRITE,
+};
