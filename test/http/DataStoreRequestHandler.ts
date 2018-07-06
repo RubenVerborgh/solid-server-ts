@@ -3,19 +3,23 @@ import DataStoreRequestHandler from '../../src/http/DataStoreRequestHandler';
 import MethodExtractor from '../../src/http/MethodExtractor';
 import TargetExtractor from '../../src/http/TargetExtractor';
 import PermissionSet from '../../src/auth/PermissionSet';
+import RequestBodyParser from '../../src/http/RequestBodyParser';
+import mock from 'jest-create-mock-instance';
 import { createRequest, createResponse } from 'node-mocks-http';
 
 describe('A DataStoreRequestHandler instance', () => {
-  const methodExtractor = <MethodExtractor> {
-    extract: jest.fn().mockImplementation(request => request.method),
-  };
-  const targetExtractor = <TargetExtractor> {
-    extract: jest.fn(),
-  };
+  const methodExtractor = mock(MethodExtractor);
+  methodExtractor.extract.mockImplementation(request => request.method);
+  const targetExtractor = mock(TargetExtractor);
+  const bodyParsers = [0, 1, 2].map(() => mock(RequestBodyParser));
 
   let handler : DataStoreRequestHandler;
   beforeAll(() => {
-    handler = new DataStoreRequestHandler({ methodExtractor, targetExtractor });
+    handler = new DataStoreRequestHandler({
+      methodExtractor,
+      targetExtractor,
+      bodyParsers,
+    });
   });
 
   describe('handling a GET request', () => {
@@ -152,7 +156,7 @@ describe('A DataStoreRequestHandler instance', () => {
     });
   });
 
-  describe('handling a PATCH request', () => {
+  describe('handling a PATCH request when no body parser matches', () => {
     const request = createRequest({ method: 'PATCH' });
     const response = createResponse();
     const next = jest.fn();
@@ -161,10 +165,66 @@ describe('A DataStoreRequestHandler instance', () => {
       handler.handleRequest(request, response, next);
     });
 
-    it('requires read and write permissions', () => {
+    it('does not write a response', () => {
+      expect(response.finished).toBe(false);
+    });
+
+    it('calls next with a 405 error', () => {
+      expect(next).toHaveBeenCalledTimes(1);
+      const error = next.mock.calls[0][0];
+      expect(error).toBeInstanceOf(Error);
+      expect(error).toHaveProperty('status', 415);
+    });
+  });
+
+  describe('handling a PATCH request when the second body parser matches', () => {
+    const request = createRequest({ method: 'PATCH' });
+    const response = createResponse();
+    const next = jest.fn();
+    const parsedBody = {
+      requiredPermissions: new PermissionSet({ write: true, append: true }),
+    };
+
+    beforeAll(() => {
+      bodyParsers.forEach(p => p.supports.mockClear());
+
+      bodyParsers[1].supports.mockReturnValueOnce(true);
+      bodyParsers[1].parse.mockReturnValueOnce(Promise.resolve(parsedBody));
+
+      handler.handleRequest(request, response, next);
+    });
+
+    it('checks whether the first body parser supports the body', () => {
+      expect(bodyParsers[0].supports).toHaveBeenCalledTimes(1);
+      expect(bodyParsers[0].supports).toHaveBeenCalledWith(request.headers);
+    });
+
+    it('checks whether the second body parser supports the body', () => {
+      expect(bodyParsers[1].supports).toHaveBeenCalledTimes(1);
+      expect(bodyParsers[1].supports).toHaveBeenCalledWith(request.headers);
+    });
+
+    it('does not check whether the third body parser supports the body', () => {
+      expect(bodyParsers[2].supports).not.toHaveBeenCalled();
+    });
+
+    it('uses the second body parser', () => {
+      expect(bodyParsers[1].parse).toHaveBeenCalledTimes(1);
+      expect(bodyParsers[1].parse).toHaveBeenCalledWith(request, request.headers);
+    });
+
+    it('writes a response', () => {
+      expect(response.finished).toBe(true);
+    });
+
+    it('does not call next', () => {
+      expect(next).not.toBeCalled();
+    });
+
+    it('obtains the required permissions from the body parser', () => {
       const body = JSON.parse(response._getData());
       const requiredPermissions = new PermissionSet(body.requiredPermissions.flags);
-      expect(requiredPermissions).toHaveProperty('read', true);
+      expect(requiredPermissions).toHaveProperty('read', false);
       expect(requiredPermissions).toHaveProperty('write', true);
       expect(requiredPermissions).toHaveProperty('append', true);
       expect(requiredPermissions).toHaveProperty('control', false);
@@ -199,7 +259,7 @@ describe('A DataStoreRequestHandler instance', () => {
     const cause = new Error('cause');
 
     beforeAll(() => {
-      targetExtractor.extract = jest.fn().mockImplementationOnce(() => { throw cause; });
+      targetExtractor.extract.mockImplementationOnce(() => { throw cause; });
       handler.handleRequest(request, response, next);
     });
 

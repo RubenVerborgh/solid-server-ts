@@ -4,6 +4,8 @@ import HttpError from 'standard-http-error';
 
 import PermissionSet from '../auth/PermissionSet';
 import MethodExtractor from './MethodExtractor';
+import RequestBody from './RequestBody';
+import RequestBodyParser from './RequestBodyParser';
 import TargetExtractor from './TargetExtractor';
 
 /**
@@ -12,13 +14,14 @@ import TargetExtractor from './TargetExtractor';
 export default class DataStoreRequestHandler {
   protected methodExtractor: MethodExtractor;
   protected targetExtractor: TargetExtractor;
+  protected bodyParsers: RequestBodyParser[];
 
-  constructor(options: {
-      methodExtractor: MethodExtractor,
-      targetExtractor: TargetExtractor,
-    }) {
-    this.methodExtractor = options.methodExtractor;
-    this.targetExtractor = options.targetExtractor;
+  constructor({ methodExtractor, targetExtractor, bodyParsers = [] }:
+              { methodExtractor: MethodExtractor, targetExtractor: TargetExtractor,
+                bodyParsers?: RequestBodyParser[] }) {
+    this.methodExtractor = methodExtractor;
+    this.targetExtractor = targetExtractor;
+    this.bodyParsers = bodyParsers;
   }
 
   /**
@@ -40,12 +43,27 @@ export default class DataStoreRequestHandler {
    * @param response - The HTTP response
    */
   protected async _handleRequest(request: http.IncomingMessage, response: http.ServerResponse) {
-    // Extract and validate the method and the associated required permissions
+    // Extract and validate the method
     const method = this.methodExtractor.extract(request);
     if (!METHOD_PERMISSIONS.hasOwnProperty(method)) {
       throw new HttpError(HttpError.METHOD_NOT_ALLOWED);
     }
-    const requiredPermissions = METHOD_PERMISSIONS[method].clone();
+
+    // Determine the required permissions based on the method or request body
+    let requiredPermissions: PermissionSet;
+    let requestBody: RequestBody | undefined;
+    if (!PERMISSIONS_IN_BODY[method]) {
+      // The method fully determines the permissions
+      requiredPermissions = METHOD_PERMISSIONS[method].clone();
+    } else {
+      // Determine the permissions by parsing the body
+      const bodyParser = this.bodyParsers.find(p => p.supports(request.headers));
+      if (!bodyParser) {
+        throw new HttpError(HttpError.UNSUPPORTED_MEDIA_TYPE);
+      }
+      requestBody = await bodyParser.parse(request, request.headers);
+      requiredPermissions = requestBody.requiredPermissions;
+    }
 
     // Extract and validate the target
     let target;
@@ -75,4 +93,9 @@ const METHOD_PERMISSIONS: { [key: string]: PermissionSet } = {
   PUT: WRITE_ONLY,
   DELETE: WRITE_ONLY,
   PATCH: READ_WRITE,
+};
+
+// Methods that require parsing the request body in order to determine permissions
+const PERMISSIONS_IN_BODY: { [key: string]: boolean } = {
+  PATCH: true,
 };
