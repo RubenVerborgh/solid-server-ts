@@ -43,6 +43,18 @@ export default class DataStoreRequestHandler {
    * @param response - The HTTP response
    */
   protected async _handleRequest(request: http.IncomingMessage, response: http.ServerResponse) {
+    const parsedRequest = await this.parseRequest(request);
+    response.end(JSON.stringify(parsedRequest));
+  }
+
+  /**
+   * Parses an HTTP request.
+   *
+   * @param request - The HTTP request
+   *
+   * @return - An object containing the properties of the request
+   */
+  protected async parseRequest(request: http.IncomingMessage) {
     // Extract and validate the method
     const method = this.methodExtractor.extract(request);
     if (!METHOD_PERMISSIONS.hasOwnProperty(method)) {
@@ -65,22 +77,32 @@ export default class DataStoreRequestHandler {
       requiredPermissions = METHOD_PERMISSIONS[method].clone();
     } else {
       // Determine the permissions by parsing the body
-      const bodyParser = this.bodyParsers.find(p => p.supports(request.headers));
-      if (!bodyParser) {
-        throw new HttpError(HttpError.UNSUPPORTED_MEDIA_TYPE);
-      }
-      try {
-        requestBody = await bodyParser.parse(request, request.headers);
-      } catch (cause) {
-        throw new HttpError(HttpError.BAD_REQUEST, { cause });
-      }
+      requestBody = await this.parseRequestBody(request);
       requiredPermissions = requestBody.requiredPermissions;
     }
     // Determine ACL permissions from the target
     requiredPermissions.control = target.isAcl;
 
-    // Generate a response
-    response.end(JSON.stringify({ method, requiredPermissions, target }));
+    return { method, target, requiredPermissions, requestBody };
+  }
+
+  /**
+   * Parses the body of an HTTP request.
+   *
+   * @param request - The HTTP request
+   *
+   * @return - The parsed body
+   */
+  protected async parseRequestBody(request: http.IncomingMessage): Promise<RequestBody> {
+    const bodyParser = this.bodyParsers.find(p => p.supports(request.headers));
+    if (!bodyParser) {
+      throw new HttpError(HttpError.UNSUPPORTED_MEDIA_TYPE);
+    }
+    try {
+      return bodyParser.parse(request, request.headers);
+    } catch (cause) {
+      throw new HttpError(HttpError.BAD_REQUEST, { cause });
+    }
   }
 }
 
