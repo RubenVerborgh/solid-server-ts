@@ -11,6 +11,7 @@ describe('A DataStoreRequestHandler instance', () => {
   const methodExtractor = mock(MethodExtractor);
   methodExtractor.extract.mockImplementation(request => request.method);
   const targetExtractor = mock(TargetExtractor);
+  targetExtractor.extract.mockImplementation(() => ({}));
   const bodyParsers = [0, 1, 2].map(() => mock(RequestBodyParser));
 
   let handler : DataStoreRequestHandler;
@@ -23,9 +24,7 @@ describe('A DataStoreRequestHandler instance', () => {
   });
 
   describe('handling a GET request', () => {
-    const request = createRequest({
-      method: 'GET',
-    });
+    const request = createRequest({ method: 'GET' });
     const response = createResponse();
     const next = jest.fn();
 
@@ -58,6 +57,26 @@ describe('A DataStoreRequestHandler instance', () => {
       expect(requiredPermissions).toHaveProperty('write', false);
       expect(requiredPermissions).toHaveProperty('append', false);
       expect(requiredPermissions).toHaveProperty('control', false);
+    });
+  });
+
+  describe('handling a GET request on an ACL resource', () => {
+    const request = createRequest({ method: 'GET' });
+    const response = createResponse();
+    const next = jest.fn();
+
+    beforeAll(() => {
+      targetExtractor.extract.mockImplementationOnce(() => ({ isAcl: true }));
+      handler.handleRequest(request, response, next);
+    });
+
+    it('requires read and control permissions', () => {
+      const body = JSON.parse(response._getData());
+      const requiredPermissions = new PermissionSet(body.requiredPermissions.flags);
+      expect(requiredPermissions).toHaveProperty('read', true);
+      expect(requiredPermissions).toHaveProperty('write', false);
+      expect(requiredPermissions).toHaveProperty('append', false);
+      expect(requiredPermissions).toHaveProperty('control', true);
     });
   });
 

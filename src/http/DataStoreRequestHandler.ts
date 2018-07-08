@@ -49,6 +49,14 @@ export default class DataStoreRequestHandler {
       throw new HttpError(HttpError.METHOD_NOT_ALLOWED);
     }
 
+    // Extract and validate the target
+    let target;
+    try {
+      target = this.targetExtractor.extract(request);
+    } catch (cause) {
+      throw new HttpError(HttpError.BAD_REQUEST, { cause });
+    }
+
     // Determine the required permissions based on the method or request body
     let requiredPermissions: PermissionSet;
     let requestBody: RequestBody | undefined;
@@ -68,14 +76,8 @@ export default class DataStoreRequestHandler {
       }
       requiredPermissions = requestBody.requiredPermissions;
     }
-
-    // Extract and validate the target
-    let target;
-    try {
-      target = this.targetExtractor.extract(request);
-    } catch (cause) {
-      throw new HttpError(HttpError.BAD_REQUEST, { cause });
-    }
+    // Determine ACL permissions from the target
+    requiredPermissions.control = target.isAcl;
 
     // Generate a response
     response.end(JSON.stringify({ method, requiredPermissions, target }));
