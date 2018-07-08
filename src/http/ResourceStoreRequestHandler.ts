@@ -2,13 +2,17 @@ import * as http from 'http';
 
 import HttpError from 'standard-http-error';
 
-import PermissionManager from '../auth/PermissionManager';
-import PermissionSet from '../auth/PermissionSet';
 import CredentialsExtractor from './CredentialsExtractor';
 import MethodExtractor from './MethodExtractor';
-import RequestBody from './RequestBody';
+import ParsedRequestBody from './ParsedRequestBody';
 import RequestBodyParser from './RequestBodyParser';
 import TargetExtractor from './TargetExtractor';
+
+import PermissionManager from '../auth/PermissionManager';
+import PermissionSet from '../auth/PermissionSet';
+import Representation from '../ldp/Representation';
+import ResourceIdentifier from '../ldp/ResourceIdentifier';
+import ResourceStore from '../ldp/ResourceStore';
 
 /**
  * Handles an HTTP request for the data store.
@@ -23,19 +27,24 @@ export default class ResourceStoreRequestHandler {
   // Permissions
   protected permissionManager: PermissionManager;
 
+  // Store
+  protected resourceStore: ResourceStore;
+
   constructor({ methodExtractor, targetExtractor,
                 credentialsExtractor, bodyParsers = [],
-                permissionManager }:
+                permissionManager, resourceStore }:
               { methodExtractor: MethodExtractor,
                 targetExtractor: TargetExtractor,
                 credentialsExtractor: CredentialsExtractor,
                 bodyParsers?: RequestBodyParser[],
-                permissionManager: PermissionManager }) {
+                permissionManager: PermissionManager,
+                resourceStore: ResourceStore }) {
     this.methodExtractor = methodExtractor;
     this.targetExtractor = targetExtractor;
     this.credentialsExtractor = credentialsExtractor;
     this.bodyParsers = bodyParsers;
     this.permissionManager = permissionManager;
+    this.resourceStore = resourceStore;
   }
 
   /**
@@ -59,7 +68,7 @@ export default class ResourceStoreRequestHandler {
   protected async _handleRequest(request: http.IncomingMessage, response: http.ServerResponse) {
     // Parse the request
     const parsedRequest = await this.parseRequest(request);
-    const { target, agent, requiredPermissions } = parsedRequest;
+    const { method, target, agent, requiredPermissions, requestBody } = parsedRequest;
 
     // Validate whether the agent has sufficient permissions
     const actualPermissions = this.permissionManager.getPermissions(agent, target);
@@ -68,8 +77,14 @@ export default class ResourceStoreRequestHandler {
                                               : HttpError.UNAUTHORIZED);
     }
 
+    // If a modification was requested, perform it
+    let resource: ResourceIdentifier | null = target;
+    if (requiredPermissions.append || requiredPermissions.write) {
+      resource = await this.performModification(target, method, requestBody);
+    }
+
     // TODO: write actual response
-    response.end();
+    response.end({ resource });
   }
 
   /**
@@ -99,14 +114,16 @@ export default class ResourceStoreRequestHandler {
 
     // Determine the required permissions based on the method or request body
     let requiredPermissions: PermissionSet;
-    let requestBody: RequestBody | undefined;
+    let requestBody: Representation;
     if (!PERMISSIONS_IN_BODY[method]) {
       // The method fully determines the permissions
       requiredPermissions = METHOD_PERMISSIONS[method].clone();
+      requestBody = request;
     } else {
       // Determine the permissions by parsing the body
-      requestBody = await this.parseRequestBody(request);
-      requiredPermissions = requestBody.requiredPermissions;
+      const parsedRequestBody = await this.parseRequestBody(request);
+      requiredPermissions = parsedRequestBody.requiredPermissions;
+      requestBody = parsedRequestBody;
     }
     // Determine ACL permissions from the target
     requiredPermissions.control = target.isAcl;
@@ -121,7 +138,8 @@ export default class ResourceStoreRequestHandler {
    *
    * @return - The parsed body
    */
-  protected async parseRequestBody(request: http.IncomingMessage): Promise<RequestBody> {
+  protected async parseRequestBody(request: http.IncomingMessage):
+      Promise<ParsedRequestBody> {
     const bodyParser = this.bodyParsers.find(p => p.supports(request.headers));
     if (!bodyParser) {
       throw new HttpError(HttpError.UNSUPPORTED_MEDIA_TYPE);
@@ -130,6 +148,29 @@ export default class ResourceStoreRequestHandler {
       return bodyParser.parse(request, request.headers);
     } catch (cause) {
       throw new HttpError(HttpError.BAD_REQUEST, { cause });
+    }
+  }
+
+  /**
+   * Performs a modification on the given resource.
+   */
+  protected async performModification(
+      target: ResourceIdentifier, method: string, requestBody: Representation):
+      Promise<ResourceIdentifier | null> {
+    switch (method) {
+    case 'POST':
+      return this.resourceStore.addResource(target, requestBody);
+    case 'PUT':
+      await this.resourceStore.setRepresentation(target, requestBody);
+      return null;
+    case 'DELETE':
+      await this.resourceStore.deleteResource(target);
+      return null;
+    case 'PATCH':
+      await this.resourceStore.modifyResource(target, requestBody as ParsedRequestBody);
+      return null;
+     default:
+      throw new HttpError(HttpError.METHOD_NOT_ALLOWED);
     }
   }
 }

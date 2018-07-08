@@ -6,6 +6,7 @@ import TargetExtractor from '../../src/http/TargetExtractor';
 import PermissionManager from '../../src/auth/PermissionManager';
 import PermissionSet from '../../src/auth/PermissionSet';
 import RequestBodyParser from '../../src/http/RequestBodyParser';
+import ResourceStore from '../../src/ldp/ResourceStore';
 import mock from 'jest-create-mock-instance';
 import { createRequest, createResponse } from 'node-mocks-http';
 
@@ -32,6 +33,15 @@ describe('A ResourceStoreRequestHandler instance', () => {
     getPermissions: <Function> jest.fn(() => actualPermissions),
   };
 
+  // Mock store
+  const resourceStore = <jest.Mocked<ResourceStore>> {
+    getRepresentation: <Function> jest.fn(),
+    addResource: <Function> jest.fn(),
+    setRepresentation: <Function> jest.fn(),
+    deleteResource: <Function> jest.fn(),
+    modifyResource: <Function> jest.fn(),
+  }
+
   // Create main instance
   let handler : ResourceStoreRequestHandler;
   beforeAll(() => {
@@ -41,6 +51,7 @@ describe('A ResourceStoreRequestHandler instance', () => {
       credentialsExtractor,
       bodyParsers,
       permissionManager,
+      resourceStore,
     });
   });
 
@@ -167,6 +178,19 @@ describe('A ResourceStoreRequestHandler instance', () => {
       expect(requiredPermissions).toHaveProperty('append', true);
       expect(requiredPermissions).toHaveProperty('control', false);
     });
+
+    it('asks the source to create a new resource', () => {
+      expect(resourceStore.addResource).toHaveBeenCalledTimes(1);
+      expect(resourceStore.addResource).toHaveBeenCalledWith(target, request);
+    });
+
+    it('writes a response', () => {
+      expect(response.finished).toBe(true);
+    });
+
+    it('does not call next', () => {
+      expect(next).not.toBeCalled();
+    });
   });
 
   describe('handling a PUT request', () => {
@@ -185,6 +209,19 @@ describe('A ResourceStoreRequestHandler instance', () => {
       expect(requiredPermissions).toHaveProperty('write', true);
       expect(requiredPermissions).toHaveProperty('append', true);
       expect(requiredPermissions).toHaveProperty('control', false);
+    });
+
+    it('asks the source to write a representation', () => {
+      expect(resourceStore.setRepresentation).toHaveBeenCalledTimes(1);
+      expect(resourceStore.setRepresentation).toHaveBeenCalledWith(target, request);
+    });
+
+    it('writes a response', () => {
+      expect(response.finished).toBe(true);
+    });
+
+    it('does not call next', () => {
+      expect(next).not.toBeCalled();
     });
   });
 
@@ -205,6 +242,19 @@ describe('A ResourceStoreRequestHandler instance', () => {
       expect(requiredPermissions).toHaveProperty('append', true);
       expect(requiredPermissions).toHaveProperty('control', false);
     });
+
+    it('asks the source to delete the resource', () => {
+      expect(resourceStore.deleteResource).toHaveBeenCalledTimes(1);
+      expect(resourceStore.deleteResource).toHaveBeenCalledWith(target);
+    });
+
+    it('writes a response', () => {
+      expect(response.finished).toBe(true);
+    });
+
+    it('does not call next', () => {
+      expect(next).not.toBeCalled();
+    });
   });
 
   describe('handling a PATCH request when no body parser matches', () => {
@@ -217,6 +267,10 @@ describe('A ResourceStoreRequestHandler instance', () => {
     });
     afterAll(() => {
       bodyParsers.forEach(p => p.supports.mockClear());
+    });
+
+    it('does not ask the source to modify the resource', () => {
+      expect(resourceStore.modifyResource).not.toHaveBeenCalled();
     });
 
     it('does not write a response', () => {
@@ -266,17 +320,22 @@ describe('A ResourceStoreRequestHandler instance', () => {
       expect(bodyParsers[1].parse).toHaveBeenCalledWith(request, request.headers);
     });
 
+    it('obtains the required permissions from the body parser', () => {
+      const requiredPermissions = actualPermissions.includes.mock.calls[0][0];
+      expect(requiredPermissions).toEqual(parsedBody.requiredPermissions);
+    });
+
+    it('asks the source to modify the resource', () => {
+      expect(resourceStore.modifyResource).toHaveBeenCalledTimes(1);
+      expect(resourceStore.modifyResource).toHaveBeenCalledWith(target, parsedBody);
+    });
+
     it('writes a response', () => {
       expect(response.finished).toBe(true);
     });
 
     it('does not call next', () => {
       expect(next).not.toBeCalled();
-    });
-
-    it('obtains the required permissions from the body parser', () => {
-      const requiredPermissions = actualPermissions.includes.mock.calls[0][0];
-      expect(requiredPermissions).toEqual(parsedBody.requiredPermissions);
     });
   });
 
@@ -293,6 +352,10 @@ describe('A ResourceStoreRequestHandler instance', () => {
       handler.handleRequest(request, response, next);
     });
     afterAll(jest.clearAllMocks);
+
+    it('does not ask the source to modify the resource', () => {
+      expect(resourceStore.modifyResource).not.toHaveBeenCalled();
+    });
 
     it('does not write a response', () => {
       expect(response.finished).toBe(false);
@@ -354,18 +417,23 @@ describe('A ResourceStoreRequestHandler instance', () => {
     });
   });
 
-  describe('handling a request that requires permission', () => {
+  describe('handling a PUT request that requires permission', () => {
     describe('without an authenticated agent', () => {
-      const request = createRequest({ method: 'GET' });
+      const request = createRequest({ method: 'PUT' });
       const response = createResponse();
       const next = jest.fn();
 
       beforeAll(() => {
         permissionManager.getPermissions.mockImplementationOnce(
-          () => new PermissionSet({}));
+          () => new PermissionSet({ read: true }));
         credentialsExtractor.extract.mockImplementationOnce(
           () => ({ authenticated: false }));
         handler.handleRequest(request, response, next);
+      });
+      afterAll(jest.clearAllMocks);
+
+      it('does not ask the source to set a representation', () => {
+        expect(resourceStore.setRepresentation).not.toHaveBeenCalled();
       });
 
       it('does not write a response', () => {
@@ -381,16 +449,21 @@ describe('A ResourceStoreRequestHandler instance', () => {
     });
 
     describe('with an authenticated agent', () => {
-      const request = createRequest({ method: 'GET' });
+      const request = createRequest({ method: 'PUT' });
       const response = createResponse();
       const next = jest.fn();
 
       beforeAll(() => {
         permissionManager.getPermissions.mockImplementationOnce(
-          () => new PermissionSet({}));
+          () => new PermissionSet({ read: true }));
         credentialsExtractor.extract.mockImplementationOnce(
           () => ({ authenticated: true }));
         handler.handleRequest(request, response, next);
+      });
+      afterAll(jest.clearAllMocks);
+
+      it('does not ask the source to set a representation', () => {
+        expect(resourceStore.setRepresentation).not.toHaveBeenCalled();
       });
 
       it('does not write a response', () => {

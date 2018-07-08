@@ -1,6 +1,6 @@
 import { IncomingHttpHeaders } from 'http';
 import { Readable } from 'stream';
-import RequestBody from './RequestBody';
+import ParsedRequestBody from './ParsedRequestBody';
 
 /**
  * Parser of an HTTP request body.
@@ -18,7 +18,7 @@ export default class RequestBodyParser {
    * Parses the given HTTP request body.
    */
   public async parse(body: Readable, headers: IncomingHttpHeaders):
-                     Promise<RequestBody> {
+                     Promise<ParsedRequestBody> {
     if (!this.supports(headers)) {
       throw new Error(`Unsupported body: ${headers['content-type']}`);
     }
@@ -29,7 +29,7 @@ export default class RequestBodyParser {
    * Parses the given HTTP request body.
    */
   protected async _parse(body: Readable, headers: IncomingHttpHeaders):
-                         Promise<RequestBody> {
+                         Promise<ParsedRequestBody> {
     throw new Error('Not implemented');
   }
 }
