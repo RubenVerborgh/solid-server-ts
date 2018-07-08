@@ -14,6 +14,7 @@ describe('A TargetExtractor instance', () => {
     const identifier = extractor.extract(request);
     expect(identifier.path).toEqual('/');
     expect(identifier.domain).toEqual('example.org');
+    expect(identifier.isAcl).toEqual(false);
   });
 
   it('extracts the target from a URL without trailing slash', () => {
@@ -24,6 +25,7 @@ describe('A TargetExtractor instance', () => {
     const identifier = extractor.extract(request);
     expect(identifier.path).toEqual('/foo/bar');
     expect(identifier.domain).toEqual('example.org');
+    expect(identifier.isAcl).toEqual(false);
   });
 
   it('removes a trailing slash', () => {
@@ -34,6 +36,7 @@ describe('A TargetExtractor instance', () => {
     const identifier = extractor.extract(request);
     expect(identifier.path).toEqual('/foo/bar');
     expect(identifier.domain).toEqual('example.org');
+    expect(identifier.isAcl).toEqual(false);
   });
 
   it('removes multiple trailing slashes', () => {
@@ -44,6 +47,7 @@ describe('A TargetExtractor instance', () => {
     const identifier = extractor.extract(request);
     expect(identifier.path).toEqual('/foo/bar');
     expect(identifier.domain).toEqual('example.org');
+    expect(identifier.isAcl).toEqual(false);
   });
 
   it('removes a query string', () => {
@@ -54,6 +58,7 @@ describe('A TargetExtractor instance', () => {
     const identifier = extractor.extract(request);
     expect(identifier.path).toEqual('/foo/bar');
     expect(identifier.domain).toEqual('example.org');
+    expect(identifier.isAcl).toEqual(false);
   });
 
   it('extracts http://example.org/foo%20bar%20bar', () => {
@@ -64,6 +69,7 @@ describe('A TargetExtractor instance', () => {
     const identifier = extractor.extract(request);
     expect(identifier.path).toEqual('/foo bar bar');
     expect(identifier.domain).toEqual('example.org');
+    expect(identifier.isAcl).toEqual(false);
   });
 
   it('does not extract http://example.org/../abc/', () => {
@@ -82,6 +88,17 @@ describe('A TargetExtractor instance', () => {
     });
     expect(() => extractor.extract(request))
       .toThrowError('Disallowed /.. segment in URL /..%2Fabc/');
+  });
+
+  it('recognizes an ACL resource', () => {
+    const request = createRequest({
+      url: '/foo/bar.acl',
+      headers: { host: 'example.org' },
+    });
+    const identifier = extractor.extract(request);
+    expect(identifier.path).toEqual('/foo/bar.acl');
+    expect(identifier.domain).toEqual('example.org');
+    expect(identifier.isAcl).toEqual(true);
   });
 
   it('does not allow invalid host names', () => {
