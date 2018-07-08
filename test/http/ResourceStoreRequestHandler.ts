@@ -1,4 +1,4 @@
-import DataStoreRequestHandler from '../../src/http/DataStoreRequestHandler';
+import ResourceStoreRequestHandler from '../../src/http/ResourceStoreRequestHandler';
 
 import CredentialsExtractor from '../../src/http/CredentialsExtractor';
 import MethodExtractor from '../../src/http/MethodExtractor';
@@ -9,7 +9,7 @@ import RequestBodyParser from '../../src/http/RequestBodyParser';
 import mock from 'jest-create-mock-instance';
 import { createRequest, createResponse } from 'node-mocks-http';
 
-describe('A DataStoreRequestHandler instance', () => {
+describe('A ResourceStoreRequestHandler instance', () => {
   // Mock data
   const agent = {};
   const target = { isAcl: false };
@@ -33,9 +33,9 @@ describe('A DataStoreRequestHandler instance', () => {
   };
 
   // Create main instance
-  let handler : DataStoreRequestHandler;
+  let handler : ResourceStoreRequestHandler;
   beforeAll(() => {
-    handler = new DataStoreRequestHandler({
+    handler = new ResourceStoreRequestHandler({
       methodExtractor,
       targetExtractor,
       credentialsExtractor,

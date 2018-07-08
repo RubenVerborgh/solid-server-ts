@@ -13,7 +13,7 @@ import TargetExtractor from './TargetExtractor';
 /**
  * Handles an HTTP request for the data store.
  */
-export default class DataStoreRequestHandler {
+export default class ResourceStoreRequestHandler {
   // Extractors and parsers for the request
   protected methodExtractor: MethodExtractor;
   protected targetExtractor: TargetExtractor;
