@@ -231,6 +231,34 @@ describe('A DataStoreRequestHandler instance', () => {
     });
   });
 
+  describe('handling a PATCH request when the matching parser errors', () => {
+    const request = createRequest({ method: 'PATCH' });
+    const response = createResponse();
+    const next = jest.fn();
+    const cause = new Error('cause');
+
+    beforeAll(() => {
+      bodyParsers.forEach(p => p.supports.mockClear());
+
+      bodyParsers[1].supports.mockReturnValueOnce(true);
+      bodyParsers[1].parse.mockImplementationOnce(() => { throw cause; });
+
+      handler.handleRequest(request, response, next);
+    });
+
+    it('does not write a response', () => {
+      expect(response.finished).toBe(false);
+    });
+
+    it('calls next with a 400 error', () => {
+      expect(next).toHaveBeenCalledTimes(1);
+      const error = next.mock.calls[0][0];
+      expect(error).toBeInstanceOf(Error);
+      expect(error).toHaveProperty('status', 400);
+      expect(error).toHaveProperty('cause', cause);
+    });
+  });
+
   describe('handling a request with an unsupported method', () => {
     const request = createRequest({ method: 'TRACE' });
     const response = createResponse();

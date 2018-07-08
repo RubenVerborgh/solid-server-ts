@@ -61,7 +61,11 @@ export default class DataStoreRequestHandler {
       if (!bodyParser) {
         throw new HttpError(HttpError.UNSUPPORTED_MEDIA_TYPE);
       }
-      requestBody = await bodyParser.parse(request, request.headers);
+      try {
+        requestBody = await bodyParser.parse(request, request.headers);
+      } catch (cause) {
+        throw new HttpError(HttpError.BAD_REQUEST, { cause });
+      }
       requiredPermissions = requestBody.requiredPermissions;
     }
 
@@ -69,8 +73,8 @@ export default class DataStoreRequestHandler {
     let target;
     try {
       target = this.targetExtractor.extract(request);
-    } catch (error) {
-      throw new HttpError(HttpError.BAD_REQUEST, { cause: error });
+    } catch (cause) {
+      throw new HttpError(HttpError.BAD_REQUEST, { cause });
     }
 
     // Generate a response
