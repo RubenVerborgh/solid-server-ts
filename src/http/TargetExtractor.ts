@@ -1,7 +1,7 @@
 import * as http from 'http';
 
 import URL from 'url';
-import ResourceIdentifier from './ResourceIdentifier';
+import ResourceIdentifier from '../ldp/ResourceIdentifier';
 
 const VALID_HOST = /^([a-z0-9-]+\.)*[a-z0-9-]+$/;
 

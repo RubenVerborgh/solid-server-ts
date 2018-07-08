@@ -7,6 +7,7 @@ export default class PermissionSet {
     write: boolean,
     append: boolean,
     control: boolean,
+    [key: string]: boolean,
   };
 
   constructor({ read = false,   write = false,   append = false,   control = false }:
@@ -38,5 +39,17 @@ export default class PermissionSet {
 
   public clone(): PermissionSet {
     return new PermissionSet(this.flags);
+  }
+
+  public includes(subset: PermissionSet) {
+    return (!subset.read    || this.read)   &&
+           (!subset.write   || this.write)  &&
+           (!subset.append  || this.append) &&
+           (!subset.control || this.control);
+  }
+
+  public toString() {
+    const flags = Object.keys(this.flags).filter(f => this.flags[f]);
+    return `PermissionSet { ${flags.join(', ') || '(none)'} }`;
   }
 }

@@ -2,7 +2,9 @@ import * as http from 'http';
 
 import HttpError from 'standard-http-error';
 
+import PermissionManager from '../auth/PermissionManager';
 import PermissionSet from '../auth/PermissionSet';
+import CredentialsExtractor from './CredentialsExtractor';
 import MethodExtractor from './MethodExtractor';
 import RequestBody from './RequestBody';
 import RequestBodyParser from './RequestBodyParser';
@@ -12,16 +14,28 @@ import TargetExtractor from './TargetExtractor';
  * Handles an HTTP request for the data store.
  */
 export default class DataStoreRequestHandler {
+  // Extractors and parsers for the request
   protected methodExtractor: MethodExtractor;
   protected targetExtractor: TargetExtractor;
+  protected credentialsExtractor: CredentialsExtractor;
   protected bodyParsers: RequestBodyParser[];
 
-  constructor({ methodExtractor, targetExtractor, bodyParsers = [] }:
-              { methodExtractor: MethodExtractor, targetExtractor: TargetExtractor,
-                bodyParsers?: RequestBodyParser[] }) {
+  // Permissions
+  protected permissionManager: PermissionManager;
+
+  constructor({ methodExtractor, targetExtractor,
+                credentialsExtractor, bodyParsers = [],
+                permissionManager }:
+              { methodExtractor: MethodExtractor,
+                targetExtractor: TargetExtractor,
+                credentialsExtractor: CredentialsExtractor,
+                bodyParsers?: RequestBodyParser[],
+                permissionManager: PermissionManager }) {
     this.methodExtractor = methodExtractor;
     this.targetExtractor = targetExtractor;
+    this.credentialsExtractor = credentialsExtractor;
     this.bodyParsers = bodyParsers;
+    this.permissionManager = permissionManager;
   }
 
   /**
@@ -43,8 +57,19 @@ export default class DataStoreRequestHandler {
    * @param response - The HTTP response
    */
   protected async _handleRequest(request: http.IncomingMessage, response: http.ServerResponse) {
+    // Parse the request
     const parsedRequest = await this.parseRequest(request);
-    response.end(JSON.stringify(parsedRequest));
+    const { target, agent, requiredPermissions } = parsedRequest;
+
+    // Validate whether the agent has sufficient permissions
+    const actualPermissions = this.permissionManager.getPermissions(agent, target);
+    if (!actualPermissions.includes(requiredPermissions)) {
+      throw new HttpError(agent.authenticated ? HttpError.FORBIDDEN
+                                              : HttpError.UNAUTHORIZED);
+    }
+
+    // TODO: write actual response
+    response.end();
   }
 
   /**
@@ -69,6 +94,9 @@ export default class DataStoreRequestHandler {
       throw new HttpError(HttpError.BAD_REQUEST, { cause });
     }
 
+    // Extract the credentials
+    const agent = this.credentialsExtractor.extract(request);
+
     // Determine the required permissions based on the method or request body
     let requiredPermissions: PermissionSet;
     let requestBody: RequestBody | undefined;
@@ -83,7 +111,7 @@ export default class DataStoreRequestHandler {
     // Determine ACL permissions from the target
     requiredPermissions.control = target.isAcl;
 
-    return { method, target, requiredPermissions, requestBody };
+    return { method, target, agent, requiredPermissions, requestBody };
   }
 
   /**

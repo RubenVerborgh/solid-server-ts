@@ -1,25 +1,46 @@
 import DataStoreRequestHandler from '../../src/http/DataStoreRequestHandler';
 
+import CredentialsExtractor from '../../src/http/CredentialsExtractor';
 import MethodExtractor from '../../src/http/MethodExtractor';
 import TargetExtractor from '../../src/http/TargetExtractor';
+import PermissionManager from '../../src/auth/PermissionManager';
 import PermissionSet from '../../src/auth/PermissionSet';
 import RequestBodyParser from '../../src/http/RequestBodyParser';
 import mock from 'jest-create-mock-instance';
 import { createRequest, createResponse } from 'node-mocks-http';
 
 describe('A DataStoreRequestHandler instance', () => {
+  // Mock data
+  const agent = {};
+  const target = { isAcl: false };
+  const actualPermissions = <jest.Mocked<PermissionSet>>
+    new PermissionSet({ read: true, write: true });
+  jest.spyOn(actualPermissions, 'includes');
+
+  // Mock extractors and parsers
   const methodExtractor = mock(MethodExtractor);
   methodExtractor.extract.mockImplementation(request => request.method);
   const targetExtractor = mock(TargetExtractor);
-  targetExtractor.extract.mockImplementation(() => ({}));
+  targetExtractor.extract.mockImplementation(() => target);
+  const credentialsExtractor = <jest.Mocked<CredentialsExtractor>> {
+    extract: <Function> jest.fn(() => agent),
+  };
   const bodyParsers = [0, 1, 2].map(() => mock(RequestBodyParser));
 
+  // Mock permissions
+  const permissionManager = <jest.Mocked<PermissionManager>> {
+    getPermissions: <Function> jest.fn(() => actualPermissions),
+  };
+
+  // Create main instance
   let handler : DataStoreRequestHandler;
   beforeAll(() => {
     handler = new DataStoreRequestHandler({
       methodExtractor,
       targetExtractor,
+      credentialsExtractor,
       bodyParsers,
+      permissionManager,
     });
   });
 
@@ -31,6 +52,7 @@ describe('A DataStoreRequestHandler instance', () => {
     beforeAll(() => {
       handler.handleRequest(request, response, next);
     });
+    afterAll(jest.clearAllMocks);
 
     it('calls the method extractor with the request', () => {
       expect(methodExtractor.extract).toHaveBeenCalledTimes(1);
@@ -50,9 +72,19 @@ describe('A DataStoreRequestHandler instance', () => {
       expect(next).not.toBeCalled();
     });
 
+    it('checks the permissions for the agent on the target', () => {
+      expect(permissionManager.getPermissions).toHaveBeenCalledTimes(1);
+      expect(permissionManager.getPermissions).toHaveBeenCalledWith(agent, target);
+    });
+
+    it('checks whether the actual permissions include the required permissions', () => {
+      expect(actualPermissions.includes).toHaveBeenCalledTimes(1);
+      expect(actualPermissions.includes.mock.calls[0]).toHaveLength(1);
+      expect(actualPermissions.includes.mock.calls[0][0]).toBeInstanceOf(PermissionSet);
+    });
+
     it('requires read permissions', () => {
-      const body = JSON.parse(response._getData());
-      const requiredPermissions = new PermissionSet(body.requiredPermissions.flags);
+      const requiredPermissions = actualPermissions.includes.mock.calls[0][0];
       expect(requiredPermissions).toHaveProperty('read', true);
       expect(requiredPermissions).toHaveProperty('write', false);
       expect(requiredPermissions).toHaveProperty('append', false);
@@ -69,10 +101,10 @@ describe('A DataStoreRequestHandler instance', () => {
       targetExtractor.extract.mockImplementationOnce(() => ({ isAcl: true }));
       handler.handleRequest(request, response, next);
     });
+    afterAll(jest.clearAllMocks);
 
     it('requires read and control permissions', () => {
-      const body = JSON.parse(response._getData());
-      const requiredPermissions = new PermissionSet(body.requiredPermissions.flags);
+      const requiredPermissions = actualPermissions.includes.mock.calls[0][0];
       expect(requiredPermissions).toHaveProperty('read', true);
       expect(requiredPermissions).toHaveProperty('write', false);
       expect(requiredPermissions).toHaveProperty('append', false);
@@ -88,10 +120,10 @@ describe('A DataStoreRequestHandler instance', () => {
     beforeAll(() => {
       handler.handleRequest(request, response, next);
     });
+    afterAll(jest.clearAllMocks);
 
     it('requires read permissions', () => {
-      const body = JSON.parse(response._getData());
-      const requiredPermissions = new PermissionSet(body.requiredPermissions.flags);
+      const requiredPermissions = actualPermissions.includes.mock.calls[0][0];
       expect(requiredPermissions).toHaveProperty('read', true);
       expect(requiredPermissions).toHaveProperty('write', false);
       expect(requiredPermissions).toHaveProperty('append', false);
@@ -107,10 +139,10 @@ describe('A DataStoreRequestHandler instance', () => {
     beforeAll(() => {
       handler.handleRequest(request, response, next);
     });
+    afterAll(jest.clearAllMocks);
 
     it('requires read permissions', () => {
-      const body = JSON.parse(response._getData());
-      const requiredPermissions = new PermissionSet(body.requiredPermissions.flags);
+      const requiredPermissions = actualPermissions.includes.mock.calls[0][0];
       expect(requiredPermissions).toHaveProperty('read', true);
       expect(requiredPermissions).toHaveProperty('write', false);
       expect(requiredPermissions).toHaveProperty('append', false);
@@ -126,10 +158,10 @@ describe('A DataStoreRequestHandler instance', () => {
     beforeAll(() => {
       handler.handleRequest(request, response, next);
     });
+    afterAll(jest.clearAllMocks);
 
     it('requires append permissions', () => {
-      const body = JSON.parse(response._getData());
-      const requiredPermissions = new PermissionSet(body.requiredPermissions.flags);
+      const requiredPermissions = actualPermissions.includes.mock.calls[0][0];
       expect(requiredPermissions).toHaveProperty('read', false);
       expect(requiredPermissions).toHaveProperty('write', false);
       expect(requiredPermissions).toHaveProperty('append', true);
@@ -145,10 +177,10 @@ describe('A DataStoreRequestHandler instance', () => {
     beforeAll(() => {
       handler.handleRequest(request, response, next);
     });
+    afterAll(jest.clearAllMocks);
 
     it('requires write permissions', () => {
-      const body = JSON.parse(response._getData());
-      const requiredPermissions = new PermissionSet(body.requiredPermissions.flags);
+      const requiredPermissions = actualPermissions.includes.mock.calls[0][0];
       expect(requiredPermissions).toHaveProperty('read', false);
       expect(requiredPermissions).toHaveProperty('write', true);
       expect(requiredPermissions).toHaveProperty('append', true);
@@ -164,10 +196,10 @@ describe('A DataStoreRequestHandler instance', () => {
     beforeAll(() => {
       handler.handleRequest(request, response, next);
     });
+    afterAll(jest.clearAllMocks);
 
     it('requires write permissions', () => {
-      const body = JSON.parse(response._getData());
-      const requiredPermissions = new PermissionSet(body.requiredPermissions.flags);
+      const requiredPermissions = actualPermissions.includes.mock.calls[0][0];
       expect(requiredPermissions).toHaveProperty('read', false);
       expect(requiredPermissions).toHaveProperty('write', true);
       expect(requiredPermissions).toHaveProperty('append', true);
@@ -182,6 +214,9 @@ describe('A DataStoreRequestHandler instance', () => {
 
     beforeAll(() => {
       handler.handleRequest(request, response, next);
+    });
+    afterAll(() => {
+      bodyParsers.forEach(p => p.supports.mockClear());
     });
 
     it('does not write a response', () => {
@@ -205,13 +240,12 @@ describe('A DataStoreRequestHandler instance', () => {
     };
 
     beforeAll(() => {
-      bodyParsers.forEach(p => p.supports.mockClear());
-
-      bodyParsers[1].supports.mockReturnValueOnce(true);
-      bodyParsers[1].parse.mockReturnValueOnce(Promise.resolve(parsedBody));
+      bodyParsers[1].supports.mockImplementationOnce(() => true);
+      bodyParsers[1].parse.mockImplementationOnce(async () => parsedBody);
 
       handler.handleRequest(request, response, next);
     });
+    afterAll(jest.clearAllMocks);
 
     it('checks whether the first body parser supports the body', () => {
       expect(bodyParsers[0].supports).toHaveBeenCalledTimes(1);
@@ -241,12 +275,8 @@ describe('A DataStoreRequestHandler instance', () => {
     });
 
     it('obtains the required permissions from the body parser', () => {
-      const body = JSON.parse(response._getData());
-      const requiredPermissions = new PermissionSet(body.requiredPermissions.flags);
-      expect(requiredPermissions).toHaveProperty('read', false);
-      expect(requiredPermissions).toHaveProperty('write', true);
-      expect(requiredPermissions).toHaveProperty('append', true);
-      expect(requiredPermissions).toHaveProperty('control', false);
+      const requiredPermissions = actualPermissions.includes.mock.calls[0][0];
+      expect(requiredPermissions).toEqual(parsedBody.requiredPermissions);
     });
   });
 
@@ -257,13 +287,12 @@ describe('A DataStoreRequestHandler instance', () => {
     const cause = new Error('cause');
 
     beforeAll(() => {
-      bodyParsers.forEach(p => p.supports.mockClear());
-
-      bodyParsers[1].supports.mockReturnValueOnce(true);
+      bodyParsers[1].supports.mockImplementationOnce(() => true);
       bodyParsers[1].parse.mockImplementationOnce(() => { throw cause; });
 
       handler.handleRequest(request, response, next);
     });
+    afterAll(jest.clearAllMocks);
 
     it('does not write a response', () => {
       expect(response.finished).toBe(false);
@@ -286,6 +315,7 @@ describe('A DataStoreRequestHandler instance', () => {
     beforeAll(() => {
       handler.handleRequest(request, response, next);
     });
+    afterAll(jest.clearAllMocks);
 
     it('does not write a response', () => {
       expect(response.finished).toBe(false);
@@ -309,6 +339,7 @@ describe('A DataStoreRequestHandler instance', () => {
       targetExtractor.extract.mockImplementationOnce(() => { throw cause; });
       handler.handleRequest(request, response, next);
     });
+    afterAll(jest.clearAllMocks);
 
     it('does not write a response', () => {
       expect(response.finished).toBe(false);
@@ -320,6 +351,58 @@ describe('A DataStoreRequestHandler instance', () => {
       expect(error).toBeInstanceOf(Error);
       expect(error).toHaveProperty('status', 400);
       expect(error).toHaveProperty('cause', cause);
+    });
+  });
+
+  describe('handling a request that requires permission', () => {
+    describe('without an authenticated agent', () => {
+      const request = createRequest({ method: 'GET' });
+      const response = createResponse();
+      const next = jest.fn();
+
+      beforeAll(() => {
+        permissionManager.getPermissions.mockImplementationOnce(
+          () => new PermissionSet({}));
+        credentialsExtractor.extract.mockImplementationOnce(
+          () => ({ authenticated: false }));
+        handler.handleRequest(request, response, next);
+      });
+
+      it('does not write a response', () => {
+        expect(response.finished).toBe(false);
+      });
+
+      it('calls next with a 401 error', () => {
+        expect(next).toHaveBeenCalledTimes(1);
+        const error = next.mock.calls[0][0];
+        expect(error).toBeInstanceOf(Error);
+        expect(error).toHaveProperty('status', 401);
+      });
+    });
+
+    describe('with an authenticated agent', () => {
+      const request = createRequest({ method: 'GET' });
+      const response = createResponse();
+      const next = jest.fn();
+
+      beforeAll(() => {
+        permissionManager.getPermissions.mockImplementationOnce(
+          () => new PermissionSet({}));
+        credentialsExtractor.extract.mockImplementationOnce(
+          () => ({ authenticated: true }));
+        handler.handleRequest(request, response, next);
+      });
+
+      it('does not write a response', () => {
+        expect(response.finished).toBe(false);
+      });
+
+      it('calls next with a 403 error', () => {
+        expect(next).toHaveBeenCalledTimes(1);
+        const error = next.mock.calls[0][0];
+        expect(error).toBeInstanceOf(Error);
+        expect(error).toHaveProperty('status', 403);
+      });
     });
   });
 });
