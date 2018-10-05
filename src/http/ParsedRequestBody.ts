@@ -1,4 +1,4 @@
-import PermissionSet from '../auth/PermissionSet';
+import PermissionSet from '../permissions/PermissionSet';
 import Patch from '../ldp/Patch';
 import Representation from '../ldp/Representation';
 

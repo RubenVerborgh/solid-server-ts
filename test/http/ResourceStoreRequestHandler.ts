@@ -1,11 +1,11 @@
 import ResourceStoreRequestHandler from '../../src/http/ResourceStoreRequestHandler';
 
-import CredentialsExtractor from '../../src/http/CredentialsExtractor';
+import PermissionSet from '../../src/permissions/PermissionSet';
 import MethodExtractor from '../../src/http/MethodExtractor';
 import TargetExtractor from '../../src/http/TargetExtractor';
-import PermissionManager from '../../src/auth/PermissionManager';
-import PermissionSet from '../../src/auth/PermissionSet';
+import CredentialsExtractor from '../../src/http/CredentialsExtractor';
 import RequestBodyParser from '../../src/http/RequestBodyParser';
+import AuthorizationManager from '../../src/auth/AuthorizationManager';
 import ResourceStore from '../../src/ldp/ResourceStore';
 import LdpOperationFactory from '../../src/ldp/operations/LdpOperationFactory';
 
@@ -31,7 +31,7 @@ describe('A ResourceStoreRequestHandler instance', () => {
   const bodyParsers = [0, 1, 2].map(() => mock(RequestBodyParser));
 
   // Mock permissions
-  const permissionManager = <jest.Mocked<PermissionManager>> {
+  const authorizationManager = <jest.Mocked<AuthorizationManager>> {
     getPermissions: <Function> jest.fn(() => actualPermissions),
   };
 
@@ -53,7 +53,7 @@ describe('A ResourceStoreRequestHandler instance', () => {
       targetExtractor,
       credentialsExtractor,
       bodyParsers,
-      permissionManager,
+      authorizationManager,
       operations,
     });
   });
@@ -87,8 +87,8 @@ describe('A ResourceStoreRequestHandler instance', () => {
     });
 
     it('checks the permissions for the agent on the target', () => {
-      expect(permissionManager.getPermissions).toHaveBeenCalledTimes(1);
-      expect(permissionManager.getPermissions).toHaveBeenCalledWith(agent, target);
+      expect(authorizationManager.getPermissions).toHaveBeenCalledTimes(1);
+      expect(authorizationManager.getPermissions).toHaveBeenCalledWith(agent, target);
     });
 
     it('checks whether the actual permissions include the required permissions', () => {
@@ -427,7 +427,7 @@ describe('A ResourceStoreRequestHandler instance', () => {
       const next = jest.fn();
 
       beforeAll(() => {
-        permissionManager.getPermissions.mockImplementationOnce(
+        authorizationManager.getPermissions.mockImplementationOnce(
           () => new PermissionSet({ read: true }));
         credentialsExtractor.extract.mockImplementationOnce(
           () => ({ authenticated: false }));
@@ -457,7 +457,7 @@ describe('A ResourceStoreRequestHandler instance', () => {
       const next = jest.fn();
 
       beforeAll(() => {
-        permissionManager.getPermissions.mockImplementationOnce(
+        authorizationManager.getPermissions.mockImplementationOnce(
           () => new PermissionSet({ read: true }));
         credentialsExtractor.extract.mockImplementationOnce(
           () => ({ authenticated: true }));

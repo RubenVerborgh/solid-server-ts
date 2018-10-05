@@ -2,13 +2,13 @@ import * as http from 'http';
 
 import HttpError from 'standard-http-error';
 
-import CredentialsExtractor from './CredentialsExtractor';
-import MethodExtractor from './MethodExtractor';
-import ParsedRequestBody from './ParsedRequestBody';
-import RequestBodyParser from './RequestBodyParser';
 import TargetExtractor from './TargetExtractor';
+import MethodExtractor from './MethodExtractor';
+import CredentialsExtractor from './CredentialsExtractor';
+import RequestBodyParser from './RequestBodyParser';
+import ParsedRequestBody from './ParsedRequestBody';
 
-import PermissionManager from '../auth/PermissionManager';
+import AuthorizationManager from '../auth/AuthorizationManager';
 import ResourceIdentifier from '../ldp/ResourceIdentifier';
 import LdpOperationFactory from '../ldp/operations/LdpOperationFactory';
 
@@ -26,22 +26,22 @@ export default class ResourceStoreRequestHandler {
   protected operations: LdpOperationFactory;
 
   // Permissions
-  protected permissionManager: PermissionManager;
+  protected authorizationManager: AuthorizationManager;
 
   constructor({ methodExtractor, targetExtractor,
                 credentialsExtractor, bodyParsers = [],
-                operations, permissionManager }:
+                operations, authorizationManager }:
               { methodExtractor: MethodExtractor,
                 targetExtractor: TargetExtractor,
                 credentialsExtractor: CredentialsExtractor,
                 bodyParsers?: RequestBodyParser[],
                 operations: LdpOperationFactory,
-                permissionManager: PermissionManager }) {
+                authorizationManager: AuthorizationManager }) {
     this.methodExtractor = methodExtractor;
     this.targetExtractor = targetExtractor;
     this.credentialsExtractor = credentialsExtractor;
     this.bodyParsers = bodyParsers;
-    this.permissionManager = permissionManager;
+    this.authorizationManager = authorizationManager;
     this.operations = operations;
   }
 
@@ -69,7 +69,7 @@ export default class ResourceStoreRequestHandler {
     const { target, operation, requiredPermissions, agent } = parsedRequest;
 
     // Validate whether the agent has sufficient permissions
-    const actualPermissions = this.permissionManager.getPermissions(agent, target);
+    const actualPermissions = this.authorizationManager.getPermissions(agent, target);
     if (!actualPermissions.includes(requiredPermissions)) {
       throw new HttpError(agent.authenticated ? HttpError.FORBIDDEN
                                               : HttpError.UNAUTHORIZED);

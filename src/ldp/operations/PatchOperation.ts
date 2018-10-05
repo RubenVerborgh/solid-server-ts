@@ -1,7 +1,7 @@
 import LdpOperation from './LdpOperation';
 import ResourceStore from '../ResourceStore';
 import ResourceIdentifier from '../ResourceIdentifier';
-import PermissionSet from '../../auth/PermissionSet';
+import PermissionSet from '../../permissions/PermissionSet';
 import ParsedRequestBody from '../../http/ParsedRequestBody';
 
 /**

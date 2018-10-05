@@ -1,11 +1,11 @@
 import ResourceIdentifier from '../ldp/ResourceIdentifier';
 import Credentials from './Credentials';
-import PermissionSet from './PermissionSet';
+import PermissionSet from '../permissions/PermissionSet';
 
 /**
  * Determines the permissions of an agent.
  */
-export default interface IPermissionManager {
+export default interface IAuthorizationManager {
   /**
    * Obtains the permissions the agent has on the given resource.
    */
