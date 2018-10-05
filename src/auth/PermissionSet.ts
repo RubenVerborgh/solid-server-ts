@@ -2,6 +2,11 @@
  * Describes the needed or actual permissions on a resource.
  */
 export default class PermissionSet {
+  public static READ_ONLY = new PermissionSet({ read: true });
+  public static WRITE_ONLY = new PermissionSet({ write: true });
+  public static APPEND_ONLY = new PermissionSet({ append: true });
+  public static READ_WRITE = new PermissionSet({ read: true, write: true });
+
   protected flags: {
     read: boolean,
     write: boolean,

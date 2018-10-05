@@ -7,6 +7,8 @@ import PermissionManager from '../../src/auth/PermissionManager';
 import PermissionSet from '../../src/auth/PermissionSet';
 import RequestBodyParser from '../../src/http/RequestBodyParser';
 import ResourceStore from '../../src/ldp/ResourceStore';
+import LdpOperationFactory from '../../src/ldp/operations/LdpOperationFactory';
+
 import mock from 'jest-create-mock-instance';
 import { createRequest, createResponse } from 'node-mocks-http';
 
@@ -41,6 +43,7 @@ describe('A ResourceStoreRequestHandler instance', () => {
     deleteResource: <Function> jest.fn(),
     modifyResource: <Function> jest.fn(),
   }
+  const operations = new LdpOperationFactory({ store: resourceStore });
 
   // Create main instance
   let handler : ResourceStoreRequestHandler;
@@ -51,7 +54,7 @@ describe('A ResourceStoreRequestHandler instance', () => {
       credentialsExtractor,
       bodyParsers,
       permissionManager,
-      resourceStore,
+      operations,
     });
   });
 

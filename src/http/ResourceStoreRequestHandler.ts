@@ -9,10 +9,8 @@ import RequestBodyParser from './RequestBodyParser';
 import TargetExtractor from './TargetExtractor';
 
 import PermissionManager from '../auth/PermissionManager';
-import PermissionSet from '../auth/PermissionSet';
-import Representation from '../ldp/Representation';
 import ResourceIdentifier from '../ldp/ResourceIdentifier';
-import ResourceStore from '../ldp/ResourceStore';
+import LdpOperationFactory from '../ldp/operations/LdpOperationFactory';
 
 /**
  * Handles an HTTP request for the data store.
@@ -24,27 +22,27 @@ export default class ResourceStoreRequestHandler {
   protected credentialsExtractor: CredentialsExtractor;
   protected bodyParsers: RequestBodyParser[];
 
+  // Operations
+  protected operations: LdpOperationFactory;
+
   // Permissions
   protected permissionManager: PermissionManager;
 
-  // Store
-  protected resourceStore: ResourceStore;
-
   constructor({ methodExtractor, targetExtractor,
                 credentialsExtractor, bodyParsers = [],
-                permissionManager, resourceStore }:
+                operations, permissionManager }:
               { methodExtractor: MethodExtractor,
                 targetExtractor: TargetExtractor,
                 credentialsExtractor: CredentialsExtractor,
                 bodyParsers?: RequestBodyParser[],
-                permissionManager: PermissionManager,
-                resourceStore: ResourceStore }) {
+                operations: LdpOperationFactory,
+                permissionManager: PermissionManager }) {
     this.methodExtractor = methodExtractor;
     this.targetExtractor = targetExtractor;
     this.credentialsExtractor = credentialsExtractor;
     this.bodyParsers = bodyParsers;
     this.permissionManager = permissionManager;
-    this.resourceStore = resourceStore;
+    this.operations = operations;
   }
 
   /**
@@ -68,7 +66,7 @@ export default class ResourceStoreRequestHandler {
   protected async _handleRequest(request: http.IncomingMessage, response: http.ServerResponse) {
     // Parse the request
     const parsedRequest = await this.parseRequest(request);
-    const { method, target, agent, requiredPermissions, requestBody } = parsedRequest;
+    const { target, operation, requiredPermissions, agent } = parsedRequest;
 
     // Validate whether the agent has sufficient permissions
     const actualPermissions = this.permissionManager.getPermissions(agent, target);
@@ -79,11 +77,11 @@ export default class ResourceStoreRequestHandler {
 
     // If a modification was requested, perform it
     let resource: ResourceIdentifier | null = target;
-    if (requiredPermissions.append || requiredPermissions.write) {
-      resource = await this.performModification(target, method, requestBody);
+    if (operation.performsModification) {
+      resource = await operation.performModification();
     }
 
-    // TODO: write actual response
+    // TODO: write representation of the resource
     response.end({ resource });
   }
 
@@ -95,12 +93,6 @@ export default class ResourceStoreRequestHandler {
    * @return - An object containing the properties of the request
    */
   protected async parseRequest(request: http.IncomingMessage) {
-    // Extract and validate the method
-    const method = this.methodExtractor.extract(request);
-    if (!METHOD_PERMISSIONS.hasOwnProperty(method)) {
-      throw new HttpError(HttpError.METHOD_NOT_ALLOWED);
-    }
-
     // Extract and validate the target
     let target;
     try {
@@ -109,26 +101,30 @@ export default class ResourceStoreRequestHandler {
       throw new HttpError(HttpError.BAD_REQUEST, { cause });
     }
 
+    // Create the operation based on the HTTP method
+    let operation;
+    try {
+      const method = this.methodExtractor.extract(request);
+      operation = this.operations.createOperation({ method, target });
+    } catch {
+      throw new HttpError(HttpError.METHOD_NOT_ALLOWED);
+    }
+    // Pass the body to the operation if necessary
+    if (operation.requiresBody) {
+      operation.body = request;
+    }
+    if (operation.requiresParsedBody) {
+      operation.parsedBody = await this.parseRequestBody(request);
+    }
+
+    // Determine required ACL permissions from the target
+    const requiredPermissions = operation.requiredPermissions;
+    requiredPermissions.control = target.isAcl;
+
     // Extract the credentials
     const agent = this.credentialsExtractor.extract(request);
 
-    // Determine the required permissions based on the method or request body
-    let requiredPermissions: PermissionSet;
-    let requestBody: Representation;
-    if (!PERMISSIONS_IN_BODY[method]) {
-      // The method fully determines the permissions
-      requiredPermissions = METHOD_PERMISSIONS[method].clone();
-      requestBody = request;
-    } else {
-      // Determine the permissions by parsing the body
-      const parsedRequestBody = await this.parseRequestBody(request);
-      requiredPermissions = parsedRequestBody.requiredPermissions;
-      requestBody = parsedRequestBody;
-    }
-    // Determine ACL permissions from the target
-    requiredPermissions.control = target.isAcl;
-
-    return { method, target, agent, requiredPermissions, requestBody };
+    return { target, operation, requiredPermissions, agent };
   }
 
   /**
@@ -150,49 +146,4 @@ export default class ResourceStoreRequestHandler {
       throw new HttpError(HttpError.BAD_REQUEST, { cause });
     }
   }
-
-  /**
-   * Performs a modification on the given resource.
-   */
-  protected async performModification(
-      target: ResourceIdentifier, method: string, requestBody: Representation):
-      Promise<ResourceIdentifier | null> {
-    switch (method) {
-    case 'POST':
-      return this.resourceStore.addResource(target, requestBody);
-    case 'PUT':
-      await this.resourceStore.setRepresentation(target, requestBody);
-      return null;
-    case 'DELETE':
-      await this.resourceStore.deleteResource(target);
-      return null;
-    case 'PATCH':
-      await this.resourceStore.modifyResource(target, requestBody as ParsedRequestBody);
-      return null;
-     default:
-      throw new HttpError(HttpError.METHOD_NOT_ALLOWED);
-    }
-  }
 }
-
-// Common permission sets
-const READ_ONLY = new PermissionSet({ read: true });
-const WRITE_ONLY = new PermissionSet({ write: true });
-const APPEND_ONLY = new PermissionSet({ append: true });
-const READ_WRITE = new PermissionSet({ read: true, write: true });
-
-// Required permissions per HTTP method
-const METHOD_PERMISSIONS: { [key: string]: PermissionSet } = {
-  GET: READ_ONLY,
-  HEAD: READ_ONLY,
-  OPTIONS: READ_ONLY,
-  POST: APPEND_ONLY,
-  PUT: WRITE_ONLY,
-  DELETE: WRITE_ONLY,
-  PATCH: READ_WRITE,
-};
-
-// Methods that require parsing the request body in order to determine permissions
-const PERMISSIONS_IN_BODY: { [key: string]: boolean } = {
-  PATCH: true,
-};
