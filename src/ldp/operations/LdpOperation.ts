@@ -29,9 +29,7 @@ export default abstract class LdpOperation {
 
   get requiresParsedBody(): boolean { return false; }
 
-  get requiredPermissions(): PermissionSet {
-    return PermissionSet.READ_ONLY.clone();
-  }
+  get requiredPermissions(): PermissionSet { return PermissionSet.READ_ONLY; }
 
   get performsModification(): boolean {
     return this.requiredPermissions.append || this.requiredPermissions.write;

@@ -17,9 +17,7 @@ export default class PutOperation extends LdpOperation {
 
   get requiresBody(): boolean { return true; }
 
-  get requiredPermissions(): PermissionSet {
-    return PermissionSet.WRITE_ONLY.clone();
-  }
+  get requiredPermissions(): PermissionSet { return PermissionSet.WRITE_ONLY; }
 
   async performModification(): Promise<ResourceIdentifier> {
     await this.store.setRepresentation(this.target, this.body as Representation);

@@ -17,9 +17,7 @@ export default class PostOperation extends LdpOperation {
 
   get requiresBody(): boolean { return true; }
 
-  get requiredPermissions(): PermissionSet {
-    return PermissionSet.APPEND_ONLY.clone();
-  }
+  get requiredPermissions(): PermissionSet { return PermissionSet.APPEND_ONLY; }
 
   async performModification(): Promise<ResourceIdentifier> {
     return this.store.addResource(this.target, this.body as Representation);

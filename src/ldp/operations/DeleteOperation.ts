@@ -13,9 +13,7 @@ export default class DeleteOperation extends LdpOperation {
     super(settings);
   }
 
-  get requiredPermissions(): PermissionSet {
-    return PermissionSet.WRITE_ONLY.clone();
-  }
+  get requiredPermissions(): PermissionSet { return PermissionSet.WRITE_ONLY }
 
   async performModification(): Promise<null> {
     await this.store.deleteResource(this.target);

@@ -117,9 +117,11 @@ export default class ResourceStoreRequestHandler {
       operation.parsedBody = await this.parseRequestBody(request);
     }
 
-    // Determine required ACL permissions from the target
-    const requiredPermissions = operation.requiredPermissions;
-    requiredPermissions.control = target.isAcl;
+    // Determine whether the target requires control permissions
+    let requiredPermissions = operation.requiredPermissions;
+    if (target.isAcl) {
+      requiredPermissions = requiredPermissions.update({ control: true });
+    }
 
     // Extract the credentials
     const agent = this.credentialsExtractor.extract(request);
