@@ -69,7 +69,8 @@ export default class ResourceStoreRequestHandler {
     const { target, operation, requiredPermissions, agent } = parsedRequest;
 
     // Validate whether the agent has sufficient permissions
-    const actualPermissions = this.authorizationManager.getPermissions(agent, target);
+    const actualPermissions =
+      await this.authorizationManager.getPermissions(agent, target);
     if (!actualPermissions.includes(requiredPermissions)) {
       throw new HttpError(agent.authenticated ? HttpError.FORBIDDEN
                                               : HttpError.UNAUTHORIZED);

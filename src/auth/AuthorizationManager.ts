@@ -9,5 +9,6 @@ export default interface IAuthorizationManager {
   /**
    * Obtains the permissions the agent has on the given resource.
    */
-  getPermissions(agent: Credentials, target: ResourceIdentifier): PermissionSet;
+  getPermissions(agent: Credentials, target: ResourceIdentifier):
+    Promise<PermissionSet>;
 }
