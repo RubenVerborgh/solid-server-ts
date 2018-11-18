@@ -114,10 +114,10 @@ export default class ResourceStoreRequestHandler {
       throw new HttpError(HttpError.METHOD_NOT_ALLOWED);
     }
     // Pass the body to the operation if necessary
-    if (operation.requiresBody) {
+    if (operation.acceptsBody) {
       operation.body = request;
     }
-    if (operation.requiresParsedBody) {
+    if (operation.acceptsParsedBody) {
       operation.parsedBody = await this.parseRequestBody(request);
     }
 

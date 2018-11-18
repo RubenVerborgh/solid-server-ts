@@ -15,7 +15,7 @@ export default class PostOperation extends LdpOperation {
     super(settings);
   }
 
-  get requiresBody(): boolean { return true; }
+  get acceptsBody(): boolean { return true; }
 
   get requiredPermissions(): PermissionSet { return PermissionSet.APPEND_ONLY; }
 

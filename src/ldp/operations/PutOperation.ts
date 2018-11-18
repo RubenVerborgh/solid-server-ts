@@ -15,7 +15,7 @@ export default class PutOperation extends LdpOperation {
     super(settings);
   }
 
-  get requiresBody(): boolean { return true; }
+  get acceptsBody(): boolean { return true; }
 
   get requiredPermissions(): PermissionSet { return PermissionSet.WRITE_ONLY; }
 

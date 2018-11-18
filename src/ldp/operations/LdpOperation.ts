@@ -8,26 +8,48 @@ import ParsedRequestBody from '../../http/ParsedRequestBody';
  * Base class for LDP operations.
  */
 export default abstract class LdpOperation {
-  public store: ResourceStore;
-  public target: ResourceIdentifier;
-  public body: Representation | null;
-  public parsedBody: ParsedRequestBody | null;
+  protected readonly store: ResourceStore;
 
-  constructor({ store, target,
-                body = null, parsedBody = null } :
-              { store: ResourceStore,
-                target: ResourceIdentifier,
-                body?: Representation,
-                parsedBody?: ParsedRequestBody }) {
+  public readonly target: ResourceIdentifier;
+
+  private _body: Representation | null;
+  private _parsedBody: ParsedRequestBody | null;
+
+  constructor({ store, target, body = null, parsedBody = null } : {
+    store: ResourceStore,
+    target: ResourceIdentifier,
+    body?: Representation,
+    parsedBody?: ParsedRequestBody
+  }) {
     this.store = store;
     this.target = target;
-    this.body = body;
-    this.parsedBody = parsedBody;
+    this._body = body;
+    this._parsedBody = parsedBody;
   }
 
-  get requiresBody(): boolean { return false; }
+  get acceptsBody(): boolean { return false; }
 
-  get requiresParsedBody(): boolean { return false; }
+  get body(): Representation | null { return this._body; }
+
+  set body(body: Representation | null) {
+    if (!this.acceptsBody)
+      throw new Error('This operation does not accept a body.');
+    if (this._body !== null)
+      throw new Error('The body has already been set on this operation.');
+    this._body = body;
+  }
+
+  get acceptsParsedBody(): boolean { return false; }
+
+  get parsedBody(): ParsedRequestBody | null { return this._parsedBody; }
+
+  set parsedBody(parsedBody: ParsedRequestBody | null) {
+    if (!this.acceptsParsedBody)
+      throw new Error('This operation does not accept a parsed body.');
+    if (this._parsedBody !== null)
+      throw new Error('The parsed body has already been set on this operation.');
+    this._parsedBody = parsedBody;
+  }
 
   get requiredPermissions(): PermissionSet { return PermissionSet.READ_ONLY; }
 

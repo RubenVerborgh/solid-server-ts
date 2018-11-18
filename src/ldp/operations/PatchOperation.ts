@@ -15,7 +15,7 @@ export default class PatchOperation extends LdpOperation {
     super(settings);
   }
 
-  get requiresParsedBody(): boolean { return true; }
+  get acceptsParsedBody(): boolean { return true; }
 
   get requiredPermissions(): PermissionSet {
     return this.patch.requiredPermissions;
