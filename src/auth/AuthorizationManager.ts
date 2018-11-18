@@ -7,8 +7,11 @@ import PermissionSet from '../permissions/PermissionSet';
  */
 export default interface IAuthorizationManager {
   /**
-   * Obtains the permissions the agent has on the given resource.
+   * Verifies whether the agent has the required permissions on the given target.
    */
-  getPermissions(agent: Credentials, target: ResourceIdentifier):
-    Promise<PermissionSet>;
+  hasPermissions(
+    agent: Credentials,
+    target: ResourceIdentifier,
+    requiredPermissions: PermissionSet,
+  ): Promise<boolean>;
 }

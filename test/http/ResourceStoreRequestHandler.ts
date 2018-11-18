@@ -16,9 +16,6 @@ describe('A ResourceStoreRequestHandler instance', () => {
   // Mock data
   const agent = {};
   const target = { isAcl: false };
-  const actualPermissions = <jest.Mocked<PermissionSet>>
-    new PermissionSet({ read: true, write: true });
-  jest.spyOn(actualPermissions, 'includes');
 
   // Mock extractors and parsers
   const methodExtractor = mock(MethodExtractor);
@@ -32,7 +29,7 @@ describe('A ResourceStoreRequestHandler instance', () => {
 
   // Mock permissions
   const authorizationManager = <jest.Mocked<AuthorizationManager>> {
-    getPermissions: <Function> jest.fn(() => actualPermissions),
+    hasPermissions: <Function> jest.fn(async () => true),
   };
 
   // Mock store
@@ -87,22 +84,12 @@ describe('A ResourceStoreRequestHandler instance', () => {
     });
 
     it('checks the permissions for the agent on the target', () => {
-      expect(authorizationManager.getPermissions).toHaveBeenCalledTimes(1);
-      expect(authorizationManager.getPermissions).toHaveBeenCalledWith(agent, target);
-    });
-
-    it('checks whether the actual permissions include the required permissions', () => {
-      expect(actualPermissions.includes).toHaveBeenCalledTimes(1);
-      expect(actualPermissions.includes.mock.calls[0]).toHaveLength(1);
-      expect(actualPermissions.includes.mock.calls[0][0]).toBeInstanceOf(PermissionSet);
-    });
-
-    it('requires read permissions', () => {
-      const requiredPermissions = actualPermissions.includes.mock.calls[0][0];
-      expect(requiredPermissions).toHaveProperty('read', true);
-      expect(requiredPermissions).toHaveProperty('write', false);
-      expect(requiredPermissions).toHaveProperty('append', false);
-      expect(requiredPermissions).toHaveProperty('control', false);
+      expect(authorizationManager.hasPermissions).toHaveBeenCalledTimes(1);
+      expect(authorizationManager.hasPermissions.mock.calls[0]).toEqual([
+        agent,
+        target,
+        new PermissionSet({ read: true }),
+      ]);
     });
   });
 
@@ -118,11 +105,8 @@ describe('A ResourceStoreRequestHandler instance', () => {
     afterAll(jest.clearAllMocks);
 
     it('requires read and control permissions', () => {
-      const requiredPermissions = actualPermissions.includes.mock.calls[0][0];
-      expect(requiredPermissions).toHaveProperty('read', true);
-      expect(requiredPermissions).toHaveProperty('write', false);
-      expect(requiredPermissions).toHaveProperty('append', false);
-      expect(requiredPermissions).toHaveProperty('control', true);
+      expect(authorizationManager.hasPermissions.mock.calls[0][2]).toEqual(
+        new PermissionSet({ read: true, control: true }));
     });
   });
 
@@ -137,11 +121,8 @@ describe('A ResourceStoreRequestHandler instance', () => {
     afterAll(jest.clearAllMocks);
 
     it('requires read permissions', () => {
-      const requiredPermissions = actualPermissions.includes.mock.calls[0][0];
-      expect(requiredPermissions).toHaveProperty('read', true);
-      expect(requiredPermissions).toHaveProperty('write', false);
-      expect(requiredPermissions).toHaveProperty('append', false);
-      expect(requiredPermissions).toHaveProperty('control', false);
+      expect(authorizationManager.hasPermissions.mock.calls[0][2]).toEqual(
+        new PermissionSet({ read: true }));
     });
   });
 
@@ -156,11 +137,8 @@ describe('A ResourceStoreRequestHandler instance', () => {
     afterAll(jest.clearAllMocks);
 
     it('requires read permissions', () => {
-      const requiredPermissions = actualPermissions.includes.mock.calls[0][0];
-      expect(requiredPermissions).toHaveProperty('read', true);
-      expect(requiredPermissions).toHaveProperty('write', false);
-      expect(requiredPermissions).toHaveProperty('append', false);
-      expect(requiredPermissions).toHaveProperty('control', false);
+      expect(authorizationManager.hasPermissions.mock.calls[0][2]).toEqual(
+        new PermissionSet({ read: true }));
     });
   });
 
@@ -175,11 +153,8 @@ describe('A ResourceStoreRequestHandler instance', () => {
     afterAll(jest.clearAllMocks);
 
     it('requires append permissions', () => {
-      const requiredPermissions = actualPermissions.includes.mock.calls[0][0];
-      expect(requiredPermissions).toHaveProperty('read', false);
-      expect(requiredPermissions).toHaveProperty('write', false);
-      expect(requiredPermissions).toHaveProperty('append', true);
-      expect(requiredPermissions).toHaveProperty('control', false);
+      expect(authorizationManager.hasPermissions.mock.calls[0][2]).toEqual(
+        new PermissionSet({ append: true }));
     });
 
     it('asks the source to create a new resource', () => {
@@ -207,11 +182,8 @@ describe('A ResourceStoreRequestHandler instance', () => {
     afterAll(jest.clearAllMocks);
 
     it('requires write permissions', () => {
-      const requiredPermissions = actualPermissions.includes.mock.calls[0][0];
-      expect(requiredPermissions).toHaveProperty('read', false);
-      expect(requiredPermissions).toHaveProperty('write', true);
-      expect(requiredPermissions).toHaveProperty('append', true);
-      expect(requiredPermissions).toHaveProperty('control', false);
+      expect(authorizationManager.hasPermissions.mock.calls[0][2]).toEqual(
+        new PermissionSet({ write: true }));
     });
 
     it('asks the source to write a representation', () => {
@@ -239,11 +211,8 @@ describe('A ResourceStoreRequestHandler instance', () => {
     afterAll(jest.clearAllMocks);
 
     it('requires write permissions', () => {
-      const requiredPermissions = actualPermissions.includes.mock.calls[0][0];
-      expect(requiredPermissions).toHaveProperty('read', false);
-      expect(requiredPermissions).toHaveProperty('write', true);
-      expect(requiredPermissions).toHaveProperty('append', true);
-      expect(requiredPermissions).toHaveProperty('control', false);
+      expect(authorizationManager.hasPermissions.mock.calls[0][2]).toEqual(
+        new PermissionSet({ write: true }));
     });
 
     it('asks the source to delete the resource', () => {
@@ -324,7 +293,7 @@ describe('A ResourceStoreRequestHandler instance', () => {
     });
 
     it('obtains the required permissions from the body parser', () => {
-      const requiredPermissions = actualPermissions.includes.mock.calls[0][0];
+      const requiredPermissions = authorizationManager.hasPermissions.mock.calls[0][2];
       expect(requiredPermissions).toEqual(parsedBody.requiredPermissions);
     });
 
@@ -427,10 +396,8 @@ describe('A ResourceStoreRequestHandler instance', () => {
       const next = jest.fn();
 
       beforeAll(() => {
-        authorizationManager.getPermissions.mockImplementationOnce(
-          () => new PermissionSet({ read: true }));
-        credentialsExtractor.extract.mockImplementationOnce(
-          () => ({ authenticated: false }));
+        authorizationManager.hasPermissions.mockReturnValueOnce(false);
+        credentialsExtractor.extract.mockReturnValueOnce({ authenticated: false });
         handler.handleRequest(request, response, next);
       });
       afterAll(jest.clearAllMocks);
@@ -457,10 +424,8 @@ describe('A ResourceStoreRequestHandler instance', () => {
       const next = jest.fn();
 
       beforeAll(() => {
-        authorizationManager.getPermissions.mockImplementationOnce(
-          () => new PermissionSet({ read: true }));
-        credentialsExtractor.extract.mockImplementationOnce(
-          () => ({ authenticated: true }));
+        authorizationManager.hasPermissions.mockReturnValueOnce(false);
+        credentialsExtractor.extract.mockReturnValueOnce({ authenticated: true });
         handler.handleRequest(request, response, next);
       });
       afterAll(jest.clearAllMocks);
