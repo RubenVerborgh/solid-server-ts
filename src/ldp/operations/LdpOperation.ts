@@ -58,6 +58,8 @@ export default abstract class LdpOperation {
   }
 
   async performModification(): Promise<ResourceIdentifier | null> {
+    if (!this.performsModification)
+      throw new Error('This operation does not perform a modification.');
     return this.target;
   }
 }

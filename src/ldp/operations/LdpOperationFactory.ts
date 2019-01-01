@@ -13,7 +13,7 @@ import DeleteOperation from './DeleteOperation';
 import PatchOperation from './PatchOperation';
 
 /**
- * Base class for LDP operations.
+ * Factory for LDP operations.
  */
 export default class LdpOperationFactory {
   private store: ResourceStore;

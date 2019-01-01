@@ -6,7 +6,7 @@ import TargetExtractor from '../../../src/http/TargetExtractor';
 import CredentialsExtractor from '../../../src/http/CredentialsExtractor';
 import RequestBodyParser from '../../../src/http/RequestBodyParser';
 import AuthorizationManager from '../../../src/auth/AuthorizationManager';
-import ResourceStore from '../../../src/ldp/ResourceStore';
+import ResourceStore from '../../__mocks__/ResourceStore';
 import LdpOperationFactory from '../../../src/ldp/operations/LdpOperationFactory';
 
 import mock from 'jest-create-mock-instance';
@@ -33,13 +33,7 @@ describe('A ResourceStoreRequestHandler instance', () => {
   };
 
   // Mock store
-  const resourceStore = <jest.Mocked<ResourceStore>> {
-    getRepresentation: <Function> jest.fn(),
-    addResource: <Function> jest.fn(),
-    setRepresentation: <Function> jest.fn(),
-    deleteResource: <Function> jest.fn(),
-    modifyResource: <Function> jest.fn(),
-  }
+  const resourceStore = new ResourceStore();
   const operations = new LdpOperationFactory({ store: resourceStore });
 
   // Create main instance
