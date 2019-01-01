@@ -1,4 +1,4 @@
-import MethodExtractor from '../../src/http/MethodExtractor';
+import MethodExtractor from '../../../src/http/MethodExtractor';
 
 import { createRequest } from 'node-mocks-http';
 

@@ -1,13 +1,13 @@
-import ResourceStoreRequestHandler from '../../src/http/ResourceStoreRequestHandler';
+import ResourceStoreRequestHandler from '../../../src/http/ResourceStoreRequestHandler';
 
-import PermissionSet from '../../src/permissions/PermissionSet';
-import MethodExtractor from '../../src/http/MethodExtractor';
-import TargetExtractor from '../../src/http/TargetExtractor';
-import CredentialsExtractor from '../../src/http/CredentialsExtractor';
-import RequestBodyParser from '../../src/http/RequestBodyParser';
-import AuthorizationManager from '../../src/auth/AuthorizationManager';
-import ResourceStore from '../../src/ldp/ResourceStore';
-import LdpOperationFactory from '../../src/ldp/operations/LdpOperationFactory';
+import PermissionSet from '../../../src/permissions/PermissionSet';
+import MethodExtractor from '../../../src/http/MethodExtractor';
+import TargetExtractor from '../../../src/http/TargetExtractor';
+import CredentialsExtractor from '../../../src/http/CredentialsExtractor';
+import RequestBodyParser from '../../../src/http/RequestBodyParser';
+import AuthorizationManager from '../../../src/auth/AuthorizationManager';
+import ResourceStore from '../../../src/ldp/ResourceStore';
+import LdpOperationFactory from '../../../src/ldp/operations/LdpOperationFactory';
 
 import mock from 'jest-create-mock-instance';
 import { createRequest, createResponse } from 'node-mocks-http';
