@@ -2,7 +2,7 @@
   "scripts": {
     "build": "tsc",
     "jest": "jest",
-    "lint": "tslint src/**/*.ts",
+    "lint": "tslint src/**/*.ts test/**/*.ts",
     "test": "npm run lint && npm run jest",
     "watch": "jest --watch"
   },
@@ -15,7 +15,6 @@
     "@types/jest": "^23.1.4",
     "@types/node": "^10.5.1",
     "jest": "^23.6.0",
-    "jest-create-mock-instance": "^1.1.0",
     "node-mocks-http": "^1.7.0",
     "pre-commit": "^1.2.2",
     "ts-jest": "^23.0.0",

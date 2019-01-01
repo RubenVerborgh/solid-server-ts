@@ -1,63 +1,88 @@
 import ResourceStoreRequestHandler from '../../../src/http/ResourceStoreRequestHandler';
 
+import * as http from 'http';
 import PermissionSet from '../../../src/permissions/PermissionSet';
 import MethodExtractor from '../../../src/http/MethodExtractor';
 import TargetExtractor from '../../../src/http/TargetExtractor';
 import CredentialsExtractor from '../../../src/http/CredentialsExtractor';
 import RequestBodyParser from '../../../src/http/RequestBodyParser';
-import AuthorizationManager from '../../../src/auth/AuthorizationManager';
-import ResourceStore from '../../__mocks__/ResourceStore';
+import ParsedRequestBody from '../../../src/http/ParsedRequestBody';
+import AuthorizationManager from '../../__mocks__/AuthorizationManager';
+import LdpOperation from '../../__mocks__/LdpOperation';
 import LdpOperationFactory from '../../../src/ldp/operations/LdpOperationFactory';
 
-import mock from 'jest-create-mock-instance';
 import { createRequest, createResponse } from 'node-mocks-http';
 
 describe('A ResourceStoreRequestHandler instance', () => {
   // Mock data
   const agent = {};
+  const method = 'METHOD';
   const target = { isAcl: false };
 
   // Mock extractors and parsers
-  const methodExtractor = mock(MethodExtractor);
-  methodExtractor.extract.mockImplementation(request => request.method);
-  const targetExtractor = mock(TargetExtractor);
-  targetExtractor.extract.mockImplementation(() => target);
+  const methodExtractor = <jest.Mocked<MethodExtractor>> {
+    extract: <Function> jest.fn(() => method),
+  };
+  const targetExtractor = <jest.Mocked<TargetExtractor>> {
+    extract: <Function> jest.fn(() => target),
+  };
   const credentialsExtractor = <jest.Mocked<CredentialsExtractor>> {
     extract: <Function> jest.fn(() => agent),
   };
-  const bodyParsers = [0, 1, 2].map(() => mock(RequestBodyParser));
-
-  // Mock permissions
-  const authorizationManager = <jest.Mocked<AuthorizationManager>> {
-    hasPermissions: <Function> jest.fn(async () => true),
-  };
-
-  // Mock store
-  const resourceStore = new ResourceStore();
-  const operations = new LdpOperationFactory({ store: resourceStore });
-
-  // Create main instance
-  let handler : ResourceStoreRequestHandler;
-  beforeAll(() => {
-    handler = new ResourceStoreRequestHandler({
-      methodExtractor,
-      targetExtractor,
-      credentialsExtractor,
-      bodyParsers,
-      authorizationManager,
-      operations,
-    });
+  const bodyParsers = [0, 1, 2].map(() => <jest.Mocked<RequestBodyParser>> {
+    supports: <Function> jest.fn(() => false),
+    parse: <Function> jest.fn(),
   });
 
-  describe('handling a GET request', () => {
-    const request = createRequest({ method: 'GET' });
-    const response = createResponse();
-    const next = jest.fn();
+  // Mock permissions
+  const authorizationManager = new AuthorizationManager();
 
-    beforeAll(() => {
-      handler.handleRequest(request, response, next);
-    });
-    afterAll(jest.clearAllMocks);
+  // Mock operations
+  const operations = <jest.Mocked<LdpOperationFactory>> {
+    createOperation: <Function> jest.fn(),
+  };
+
+  // Create main instance
+  const handler = new ResourceStoreRequestHandler({
+    methodExtractor,
+    targetExtractor,
+    credentialsExtractor,
+    bodyParsers,
+    authorizationManager,
+    operations,
+  });
+
+  // Variables for testing assertions
+  let operation: LdpOperation;
+  let request: http.IncomingMessage;
+  let response: http.ServerResponse;
+  let next = jest.fn();
+  const cause = new Error('cause');
+
+  // Creates a request that handles the given operation
+  function sendRequestFor(requestedOperation?: LdpOperation) {
+    if (requestedOperation) {
+      operation = requestedOperation;
+      operations.createOperation.mockReturnValueOnce(operation);
+    }
+    else {
+      operations.createOperation.mockImplementationOnce(() => {
+        throw new Error();
+      });
+    }
+
+    request = createRequest();
+    response = createResponse();
+    next = jest.fn();
+    handler.handleRequest(request, response, next);
+
+    return new Promise(resolve => setImmediate(resolve));
+  }
+
+  describe('handling a read-only request', () => {
+    beforeEach(() => sendRequestFor(new LdpOperation({
+      requiredPermissions: PermissionSet.READ_ONLY })
+    ));
 
     it('calls the method extractor with the request', () => {
       expect(methodExtractor.extract).toHaveBeenCalledTimes(1);
@@ -67,6 +92,15 @@ describe('A ResourceStoreRequestHandler instance', () => {
     it('calls the target extractor with the request', () => {
       expect(targetExtractor.extract).toHaveBeenCalledTimes(1);
       expect(targetExtractor.extract).toBeCalledWith(request);
+    });
+
+    it('creates an operation for the extracted method and target', () => {
+      expect(operations.createOperation).toHaveBeenCalledTimes(1);
+      expect(operations.createOperation).toBeCalledWith({ method, target });
+    });
+
+    it('does not perform a modification', () => {
+      expect(operation.performModification).not.toBeCalled();
     });
 
     it('writes a response', () => {
@@ -82,269 +116,28 @@ describe('A ResourceStoreRequestHandler instance', () => {
       expect(authorizationManager.hasPermissions.mock.calls[0]).toEqual([
         agent,
         target,
-        new PermissionSet({ read: true }),
+        operation.requiredPermissions,
       ]);
     });
   });
 
-  describe('handling a GET request on an ACL resource', () => {
-    const request = createRequest({ method: 'GET' });
-    const response = createResponse();
-    const next = jest.fn();
-
-    beforeAll(() => {
+  describe('handling a request for an ACL resource', () => {
+    beforeEach(async () => {
       targetExtractor.extract.mockImplementationOnce(() => ({ isAcl: true }));
-      handler.handleRequest(request, response, next);
+      await sendRequestFor(new LdpOperation({
+        requiredPermissions: PermissionSet.READ_ONLY,
+      }));
     });
-    afterAll(jest.clearAllMocks);
 
-    it('requires read and control permissions', () => {
+    it('requires control permissions', () => {
+      expect(authorizationManager.hasPermissions).toHaveBeenCalledTimes(1);
       expect(authorizationManager.hasPermissions.mock.calls[0][2]).toEqual(
         new PermissionSet({ read: true, control: true }));
     });
   });
 
-  describe('handling a HEAD request', () => {
-    const request = createRequest({ method: 'HEAD' });
-    const response = createResponse();
-    const next = jest.fn();
-
-    beforeAll(() => {
-      handler.handleRequest(request, response, next);
-    });
-    afterAll(jest.clearAllMocks);
-
-    it('requires read permissions', () => {
-      expect(authorizationManager.hasPermissions.mock.calls[0][2]).toEqual(
-        new PermissionSet({ read: true }));
-    });
-  });
-
-  describe('handling an OPTIONS request', () => {
-    const request = createRequest({ method: 'OPTIONS' });
-    const response = createResponse();
-    const next = jest.fn();
-
-    beforeAll(() => {
-      handler.handleRequest(request, response, next);
-    });
-    afterAll(jest.clearAllMocks);
-
-    it('requires read permissions', () => {
-      expect(authorizationManager.hasPermissions.mock.calls[0][2]).toEqual(
-        new PermissionSet({ read: true }));
-    });
-  });
-
-  describe('handling a POST request', () => {
-    const request = createRequest({ method: 'POST' });
-    const response = createResponse();
-    const next = jest.fn();
-
-    beforeAll(() => {
-      handler.handleRequest(request, response, next);
-    });
-    afterAll(jest.clearAllMocks);
-
-    it('requires append permissions', () => {
-      expect(authorizationManager.hasPermissions.mock.calls[0][2]).toEqual(
-        new PermissionSet({ append: true }));
-    });
-
-    it('asks the source to create a new resource', () => {
-      expect(resourceStore.addResource).toHaveBeenCalledTimes(1);
-      expect(resourceStore.addResource).toHaveBeenCalledWith(target, request);
-    });
-
-    it('writes a response', () => {
-      expect(response.finished).toBe(true);
-    });
-
-    it('does not call next', () => {
-      expect(next).not.toBeCalled();
-    });
-  });
-
-  describe('handling a PUT request', () => {
-    const request = createRequest({ method: 'PUT' });
-    const response = createResponse();
-    const next = jest.fn();
-
-    beforeAll(() => {
-      handler.handleRequest(request, response, next);
-    });
-    afterAll(jest.clearAllMocks);
-
-    it('requires write permissions', () => {
-      expect(authorizationManager.hasPermissions.mock.calls[0][2]).toEqual(
-        new PermissionSet({ write: true }));
-    });
-
-    it('asks the source to write a representation', () => {
-      expect(resourceStore.setRepresentation).toHaveBeenCalledTimes(1);
-      expect(resourceStore.setRepresentation).toHaveBeenCalledWith(target, request);
-    });
-
-    it('writes a response', () => {
-      expect(response.finished).toBe(true);
-    });
-
-    it('does not call next', () => {
-      expect(next).not.toBeCalled();
-    });
-  });
-
-  describe('handling a DELETE request', () => {
-    const request = createRequest({ method: 'DELETE' });
-    const response = createResponse();
-    const next = jest.fn();
-
-    beforeAll(() => {
-      handler.handleRequest(request, response, next);
-    });
-    afterAll(jest.clearAllMocks);
-
-    it('requires write permissions', () => {
-      expect(authorizationManager.hasPermissions.mock.calls[0][2]).toEqual(
-        new PermissionSet({ write: true }));
-    });
-
-    it('asks the source to delete the resource', () => {
-      expect(resourceStore.deleteResource).toHaveBeenCalledTimes(1);
-      expect(resourceStore.deleteResource).toHaveBeenCalledWith(target);
-    });
-
-    it('writes a response', () => {
-      expect(response.finished).toBe(true);
-    });
-
-    it('does not call next', () => {
-      expect(next).not.toBeCalled();
-    });
-  });
-
-  describe('handling a PATCH request when no body parser matches', () => {
-    const request = createRequest({ method: 'PATCH' });
-    const response = createResponse();
-    const next = jest.fn();
-
-    beforeAll(() => {
-      handler.handleRequest(request, response, next);
-    });
-    afterAll(() => {
-      bodyParsers.forEach(p => p.supports.mockClear());
-    });
-
-    it('does not ask the source to modify the resource', () => {
-      expect(resourceStore.modifyResource).not.toHaveBeenCalled();
-    });
-
-    it('does not write a response', () => {
-      expect(response.finished).toBe(false);
-    });
-
-    it('calls next with a 405 error', () => {
-      expect(next).toHaveBeenCalledTimes(1);
-      const error = next.mock.calls[0][0];
-      expect(error).toBeInstanceOf(Error);
-      expect(error).toHaveProperty('status', 415);
-    });
-  });
-
-  describe('handling a PATCH request when the second body parser matches', () => {
-    const request = createRequest({ method: 'PATCH' });
-    const response = createResponse();
-    const next = jest.fn();
-    const parsedBody = {
-      requiredPermissions: new PermissionSet({ write: true, append: true }),
-    };
-
-    beforeAll(() => {
-      bodyParsers[1].supports.mockImplementationOnce(() => true);
-      bodyParsers[1].parse.mockImplementationOnce(async () => parsedBody);
-
-      handler.handleRequest(request, response, next);
-    });
-    afterAll(jest.clearAllMocks);
-
-    it('checks whether the first body parser supports the body', () => {
-      expect(bodyParsers[0].supports).toHaveBeenCalledTimes(1);
-      expect(bodyParsers[0].supports).toHaveBeenCalledWith(request.headers);
-    });
-
-    it('checks whether the second body parser supports the body', () => {
-      expect(bodyParsers[1].supports).toHaveBeenCalledTimes(1);
-      expect(bodyParsers[1].supports).toHaveBeenCalledWith(request.headers);
-    });
-
-    it('does not check whether the third body parser supports the body', () => {
-      expect(bodyParsers[2].supports).not.toHaveBeenCalled();
-    });
-
-    it('uses the second body parser', () => {
-      expect(bodyParsers[1].parse).toHaveBeenCalledTimes(1);
-      expect(bodyParsers[1].parse).toHaveBeenCalledWith(request, request.headers);
-    });
-
-    it('obtains the required permissions from the body parser', () => {
-      const requiredPermissions = authorizationManager.hasPermissions.mock.calls[0][2];
-      expect(requiredPermissions).toEqual(parsedBody.requiredPermissions);
-    });
-
-    it('asks the source to modify the resource', () => {
-      expect(resourceStore.modifyResource).toHaveBeenCalledTimes(1);
-      expect(resourceStore.modifyResource).toHaveBeenCalledWith(target, parsedBody);
-    });
-
-    it('writes a response', () => {
-      expect(response.finished).toBe(true);
-    });
-
-    it('does not call next', () => {
-      expect(next).not.toBeCalled();
-    });
-  });
-
-  describe('handling a PATCH request when the matching parser errors', () => {
-    const request = createRequest({ method: 'PATCH' });
-    const response = createResponse();
-    const next = jest.fn();
-    const cause = new Error('cause');
-
-    beforeAll(() => {
-      bodyParsers[1].supports.mockImplementationOnce(() => true);
-      bodyParsers[1].parse.mockImplementationOnce(() => { throw cause; });
-
-      handler.handleRequest(request, response, next);
-    });
-    afterAll(jest.clearAllMocks);
-
-    it('does not ask the source to modify the resource', () => {
-      expect(resourceStore.modifyResource).not.toHaveBeenCalled();
-    });
-
-    it('does not write a response', () => {
-      expect(response.finished).toBe(false);
-    });
-
-    it('calls next with a 400 error', () => {
-      expect(next).toHaveBeenCalledTimes(1);
-      const error = next.mock.calls[0][0];
-      expect(error).toBeInstanceOf(Error);
-      expect(error).toHaveProperty('status', 400);
-      expect(error).toHaveProperty('cause', cause);
-    });
-  });
-
   describe('handling a request with an unsupported method', () => {
-    const request = createRequest({ method: 'TRACE' });
-    const response = createResponse();
-    const next = jest.fn();
-
-    beforeAll(() => {
-      handler.handleRequest(request, response, next);
-    });
-    afterAll(jest.clearAllMocks);
+    beforeEach(() => sendRequestFor(undefined));
 
     it('does not write a response', () => {
       expect(response.finished).toBe(false);
@@ -359,16 +152,15 @@ describe('A ResourceStoreRequestHandler instance', () => {
   });
 
   describe('handling a request with an invalid target', () => {
-    const request = createRequest();
-    const response = createResponse();
-    const next = jest.fn();
-    const cause = new Error('cause');
+    beforeEach(async () => {
+      targetExtractor.extract
+        .mockImplementationOnce(() => { throw cause; });
+      await sendRequestFor(new LdpOperation({}));
+    });
 
-    beforeAll(() => {
-      targetExtractor.extract.mockImplementationOnce(() => { throw cause; });
+    beforeEach(() => {
       handler.handleRequest(request, response, next);
     });
-    afterAll(jest.clearAllMocks);
 
     it('does not write a response', () => {
       expect(response.finished).toBe(false);
@@ -383,21 +175,16 @@ describe('A ResourceStoreRequestHandler instance', () => {
     });
   });
 
-  describe('handling a PUT request that requires permission', () => {
+  describe('handling a request without appropriate permission', () => {
     describe('without an authenticated agent', () => {
-      const request = createRequest({ method: 'PUT' });
-      const response = createResponse();
-      const next = jest.fn();
-
-      beforeAll(() => {
+      beforeEach(async () => {
         authorizationManager.hasPermissions.mockReturnValueOnce(false);
         credentialsExtractor.extract.mockReturnValueOnce({ authenticated: false });
-        handler.handleRequest(request, response, next);
+        await sendRequestFor(new LdpOperation({}));
       });
-      afterAll(jest.clearAllMocks);
 
-      it('does not ask the source to set a representation', () => {
-        expect(resourceStore.setRepresentation).not.toHaveBeenCalled();
+      it('does not perform a modification', () => {
+        expect(operation.performModification).not.toBeCalled();
       });
 
       it('does not write a response', () => {
@@ -413,19 +200,14 @@ describe('A ResourceStoreRequestHandler instance', () => {
     });
 
     describe('with an authenticated agent', () => {
-      const request = createRequest({ method: 'PUT' });
-      const response = createResponse();
-      const next = jest.fn();
-
-      beforeAll(() => {
+      beforeEach(async () => {
         authorizationManager.hasPermissions.mockReturnValueOnce(false);
         credentialsExtractor.extract.mockReturnValueOnce({ authenticated: true });
-        handler.handleRequest(request, response, next);
+        await sendRequestFor(new LdpOperation({}));
       });
-      afterAll(jest.clearAllMocks);
 
-      it('does not ask the source to set a representation', () => {
-        expect(resourceStore.setRepresentation).not.toHaveBeenCalled();
+      it('does not perform a modification', () => {
+        expect(operation.performModification).not.toBeCalled();
       });
 
       it('does not write a response', () => {
@@ -437,6 +219,105 @@ describe('A ResourceStoreRequestHandler instance', () => {
         const error = next.mock.calls[0][0];
         expect(error).toBeInstanceOf(Error);
         expect(error).toHaveProperty('status', 403);
+      });
+    });
+  });
+
+  describe('handling request that requires a body parser', () => {
+    describe('when no body parser matches', () => {
+      beforeEach(() => sendRequestFor(new LdpOperation({
+        requiredPermissions: PermissionSet.APPEND_ONLY,
+        acceptsParsedBody: true,
+      })));
+
+      it('does not perform a modification', () => {
+        expect(operation.performModification).not.toBeCalled();
+      });
+
+      it('does not write a response', () => {
+        expect(response.finished).toBe(false);
+      });
+
+      it('calls next with a 405 error', () => {
+        expect(next).toHaveBeenCalledTimes(1);
+        const error = next.mock.calls[0][0];
+        expect(error).toBeInstanceOf(Error);
+        expect(error).toHaveProperty('status', 415);
+      });
+    });
+
+    describe('when the second body parser matches', () => {
+      const parsedBody = <ParsedRequestBody> {};
+
+      beforeEach(async () => {
+        bodyParsers[1].supports.mockImplementationOnce(() => true);
+        bodyParsers[1].parse.mockImplementationOnce(async () => parsedBody);
+        await sendRequestFor(new LdpOperation({
+          requiredPermissions: PermissionSet.APPEND_ONLY,
+          acceptsParsedBody: true,
+        }));
+      });
+
+      it('checks whether the first body parser supports the body', () => {
+        expect(bodyParsers[0].supports).toHaveBeenCalledTimes(1);
+        expect(bodyParsers[0].supports).toHaveBeenCalledWith(request.headers);
+      });
+
+      it('checks whether the second body parser supports the body', () => {
+        expect(bodyParsers[1].supports).toHaveBeenCalledTimes(1);
+        expect(bodyParsers[1].supports).toHaveBeenCalledWith(request.headers);
+      });
+
+      it('does not check whether the third body parser supports the body', () => {
+        expect(bodyParsers[2].supports).not.toHaveBeenCalled();
+      });
+
+      it('uses the second body parser', () => {
+        expect(bodyParsers[1].parse).toHaveBeenCalledTimes(1);
+        expect(bodyParsers[1].parse).toHaveBeenCalledWith(request, request.headers);
+      });
+
+      it('sets the parsed body on the operation', () => {
+        expect(operation.parsedBody).toBe(parsedBody);
+      });
+
+      it('performs a modification', () => {
+        expect(operation.performModification).toHaveBeenCalledTimes(1);
+      });
+
+      it('writes a response', () => {
+        expect(response.finished).toBe(true);
+      });
+
+      it('does not call next', () => {
+        expect(next).not.toBeCalled();
+      });
+    });
+
+    describe('when the matching body parser errors', () => {
+      beforeEach(async () => {
+        bodyParsers[1].supports.mockImplementationOnce(() => true);
+        bodyParsers[1].parse.mockImplementationOnce(() => Promise.reject(cause));
+        await sendRequestFor(new LdpOperation({
+          requiredPermissions: PermissionSet.APPEND_ONLY,
+          acceptsParsedBody: true,
+        }));
+      });
+
+      it('does not perform a modification', () => {
+        expect(operation.performModification).not.toBeCalled();
+      });
+
+      it('does not write a response', () => {
+        expect(response.finished).toBe(false);
+      });
+
+      it('calls next with a 400 error', () => {
+        expect(next).toHaveBeenCalledTimes(1);
+        const error = next.mock.calls[0][0];
+        expect(error).toBeInstanceOf(Error);
+        expect(error).toHaveProperty('status', 400);
+        expect(error).toHaveProperty('cause', cause);
       });
     });
   });

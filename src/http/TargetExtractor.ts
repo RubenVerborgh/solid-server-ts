@@ -39,7 +39,7 @@ export default class TargetExtractor {
     // Extract domain
     const domain = (request.headers.host || '').replace(/:\d+$/, '');
     if (!VALID_HOST.test(domain)) {
-      throw new Error(`Invalid hostname ${domain}`);
+      throw new Error(`Invalid hostname: ${domain || '(none)'}`);
     }
 
     return { path, domain, isAcl };

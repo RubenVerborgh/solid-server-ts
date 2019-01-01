@@ -1,4 +1,5 @@
 module.exports = {
+  clearMocks: true,
   globals: {
     "ts-jest": {
       "tsConfigFile": "tsconfig.json",

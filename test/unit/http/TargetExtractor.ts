@@ -107,6 +107,6 @@ describe('A TargetExtractor instance', () => {
       headers: { host: 'abc/../' },
     });
     expect(() => extractor.extract(request))
-      .toThrowError('Invalid hostname abc/../');
+      .toThrowError('Invalid hostname: abc/../');
   });
 });

@@ -144,7 +144,7 @@ export default class ResourceStoreRequestHandler {
       throw new HttpError(HttpError.UNSUPPORTED_MEDIA_TYPE);
     }
     try {
-      return bodyParser.parse(request, request.headers);
+      return await bodyParser.parse(request, request.headers);
     } catch (cause) {
       throw new HttpError(HttpError.BAD_REQUEST, { cause });
     }
