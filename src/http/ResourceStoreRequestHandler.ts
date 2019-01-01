@@ -69,8 +69,13 @@ export default class ResourceStoreRequestHandler {
     const { agent, target, operation, requiredPermissions } = parsedRequest;
 
     // Validate whether the agent has sufficient permissions
-    const hasRequiredPermissions = await this.authorizationManager.
-      hasPermissions(agent, target, requiredPermissions);
+    let hasRequiredPermissions;
+    try {
+      hasRequiredPermissions = await this.authorizationManager.
+        hasPermissions(agent, target, requiredPermissions);
+    } catch {
+      hasRequiredPermissions = false;
+    }
     if (!hasRequiredPermissions) {
       throw new HttpError(agent.authenticated ? HttpError.FORBIDDEN
                                               : HttpError.UNAUTHORIZED);
@@ -94,12 +99,11 @@ export default class ResourceStoreRequestHandler {
    * @return - An object containing the properties of the request
    */
   protected async parseRequest(request: http.IncomingMessage) {
-    // Extract the credentials
-    const agent = this.credentialsExtractor.extract(request);
-
-    // Extract and validate the target
+    // Extract the credentials and the target
+    let agent;
     let target;
     try {
+      agent = this.credentialsExtractor.extract(request);
       target = this.targetExtractor.extract(request);
     } catch (cause) {
       throw new HttpError(HttpError.BAD_REQUEST, { cause });
