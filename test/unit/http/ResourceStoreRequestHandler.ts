@@ -123,7 +123,8 @@ describe('A ResourceStoreRequestHandler instance', () => {
 
   describe('handling a request for an ACL resource', () => {
     beforeEach(async () => {
-      targetExtractor.extract.mockImplementationOnce(() => ({ isAcl: true }));
+      const target = { isAcl: true } as any;
+      targetExtractor.extract.mockImplementationOnce(() => target);
       await sendRequestFor(new LdpOperation({
         requiredPermissions: PermissionSet.READ_ONLY,
       }));
@@ -178,8 +179,9 @@ describe('A ResourceStoreRequestHandler instance', () => {
   describe('handling a request without appropriate permission', () => {
     describe('without an authenticated agent', () => {
       beforeEach(async () => {
+        const credentials = { authenticated: false } as any;
         authorizationManager.hasPermissions.mockReturnValueOnce(false);
-        credentialsExtractor.extract.mockReturnValueOnce({ authenticated: false });
+        credentialsExtractor.extract.mockReturnValueOnce(credentials);
         await sendRequestFor(new LdpOperation({}));
       });
 
@@ -201,8 +203,9 @@ describe('A ResourceStoreRequestHandler instance', () => {
 
     describe('with an authenticated agent', () => {
       beforeEach(async () => {
+        const credentials = { authenticated: true } as any;
         authorizationManager.hasPermissions.mockReturnValueOnce(false);
-        credentialsExtractor.extract.mockReturnValueOnce({ authenticated: true });
+        credentialsExtractor.extract.mockReturnValueOnce(credentials);
         await sendRequestFor(new LdpOperation({}));
       });
 

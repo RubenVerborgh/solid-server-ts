@@ -15,7 +15,7 @@ export default abstract class LdpOperation {
   private _body: Representation | null;
   private _parsedBody: ParsedRequestBody | null;
 
-  constructor({ store, target, body = null, parsedBody = null } : {
+  constructor({ store, target, body, parsedBody } : {
     store: ResourceStore,
     target: ResourceIdentifier,
     body?: Representation,
@@ -23,8 +23,8 @@ export default abstract class LdpOperation {
   }) {
     this.store = store;
     this.target = target;
-    this._body = body;
-    this._parsedBody = parsedBody;
+    this._body = body || null;
+    this._parsedBody = parsedBody || null;
   }
 
   get acceptsBody(): boolean { return false; }
