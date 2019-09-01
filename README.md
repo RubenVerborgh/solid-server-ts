@@ -1,9 +1,19 @@
 # TypeScript prototyping for a Solid server
-This repository contains proposed interfaces, components, and tests
+This repository contains interfaces, components, and tests
 to inform the design of a [Solid](https://github.com/solid/solid-spec/) server
 in TypeScript.
 
-Its main goal is a strict and modular implementation
+**Status: Archived**
+
+This repository has been used to inform
+[architectural diagrams](https://github.com/RubenVerborgh/solid-server-architecture)
+for a possible Solid server architecture.
+Its code might still be useful for educational purposes.
+
+---
+
+The main goal of this repository
+is a strict and modular implementation
 of the [Solid HTTP request handling flow](https://github.com/solid/solid-architecture/blob/master/server/request-flow.md).
 This flow was designed to ensure that
 every decision for every HTTP request
