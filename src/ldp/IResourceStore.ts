@@ -1,6 +1,6 @@
-import Patch from './Patch';
-import Representation from './Representation';
-import ResourceIdentifier from './ResourceIdentifier';
+import Patch from './IPatch';
+import Representation from './IRepresentation';
+import ResourceIdentifier from './IResourceIdentifier';
 
 export default interface IResourceStore {
   /**

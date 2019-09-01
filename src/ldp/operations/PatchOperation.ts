@@ -1,8 +1,8 @@
 import LdpOperation from './LdpOperation';
-import ResourceStore from '../ResourceStore';
-import ResourceIdentifier from '../ResourceIdentifier';
+import ResourceStore from '../IResourceStore';
+import ResourceIdentifier from '../IResourceIdentifier';
 import PermissionSet from '../../permissions/PermissionSet';
-import ParsedRequestBody from '../../http/ParsedRequestBody';
+import ParsedRequestBody from '../../http/IParsedRequestBody';
 
 /**
  * Performs an LDP PATCH operation.

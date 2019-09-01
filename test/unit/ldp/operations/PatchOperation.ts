@@ -1,9 +1,9 @@
 import PatchOperation from '../../../../src/ldp/operations/PatchOperation';
 
 import ResourceStore from '../../../__mocks__/ResourceStore';
-import ResourceIdentifier from '../../../../src/ldp/ResourceIdentifier';
+import ResourceIdentifier from '../../../../src/ldp/IResourceIdentifier';
 import PermissionSet from '../../../../src/permissions/PermissionSet';
-import ParsedRequestBody from '../../../../src/http/ParsedRequestBody';
+import ParsedRequestBody from '../../../../src/http/IParsedRequestBody';
 
 describe('A PatchOperation instance', () => {
   const store = new ResourceStore ();

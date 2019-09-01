@@ -1,6 +1,6 @@
 import PermissionSet from '../permissions/PermissionSet';
-import Patch from '../ldp/Patch';
-import Representation from '../ldp/Representation';
+import Patch from '../ldp/IPatch';
+import Representation from '../ldp/IRepresentation';
 
 /**
  * A parsed HTTP request body.

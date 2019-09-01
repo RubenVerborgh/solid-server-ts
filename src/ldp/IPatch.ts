@@ -1,4 +1,4 @@
-import Representation from './Representation';
+import Representation from './IRepresentation';
 
 /**
  * A patch describes modifications to a resource.

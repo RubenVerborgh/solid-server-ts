@@ -1,7 +1,7 @@
 import LdpOperation from './LdpOperation';
-import ResourceStore from '../ResourceStore';
-import ResourceIdentifier from '../ResourceIdentifier';
-import Representation from '../Representation';
+import ResourceStore from '../IResourceStore';
+import ResourceIdentifier from '../IResourceIdentifier';
+import Representation from '../IRepresentation';
 import PermissionSet from '../../permissions/PermissionSet';
 
 /**

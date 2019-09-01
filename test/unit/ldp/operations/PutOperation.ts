@@ -1,8 +1,8 @@
 import PutOperation from '../../../../src/ldp/operations/PutOperation';
 
 import ResourceStore from '../../../__mocks__/ResourceStore';
-import ResourceIdentifier from '../../../../src/ldp/ResourceIdentifier';
-import Representation from '../../../../src/ldp/Representation';
+import ResourceIdentifier from '../../../../src/ldp/IResourceIdentifier';
+import Representation from '../../../../src/ldp/IRepresentation';
 import PermissionSet from '../../../../src/permissions/PermissionSet';
 
 describe('A PutOperation instance', () => {

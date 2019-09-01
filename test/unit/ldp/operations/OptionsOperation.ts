@@ -1,7 +1,7 @@
 import OptionsOperation from '../../../../src/ldp/operations/OptionsOperation';
 
-import ResourceStore from '../../../../src/ldp/ResourceStore';
-import ResourceIdentifier from '../../../../src/ldp/ResourceIdentifier';
+import ResourceStore from '../../../../src/ldp/IResourceStore';
+import ResourceIdentifier from '../../../../src/ldp/IResourceIdentifier';
 import PermissionSet from '../../../../src/permissions/PermissionSet';
 
 describe('A OptionsOperation instance', () => {

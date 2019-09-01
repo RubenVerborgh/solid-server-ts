@@ -1,6 +1,6 @@
 import { IncomingHttpHeaders } from 'http';
 import { Readable } from 'stream';
-import ParsedRequestBody from './ParsedRequestBody';
+import ParsedRequestBody from './IParsedRequestBody';
 
 /**
  * Parser of an HTTP request body.

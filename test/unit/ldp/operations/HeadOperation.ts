@@ -1,7 +1,7 @@
 import HeadOperation from '../../../../src/ldp/operations/HeadOperation';
 
-import ResourceStore from '../../../../src/ldp/ResourceStore';
-import ResourceIdentifier from '../../../../src/ldp/ResourceIdentifier';
+import ResourceStore from '../../../../src/ldp/IResourceStore';
+import ResourceIdentifier from '../../../../src/ldp/IResourceIdentifier';
 import PermissionSet from '../../../../src/permissions/PermissionSet';
 
 describe('A HeadOperation instance', () => {

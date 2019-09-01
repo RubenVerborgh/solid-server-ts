@@ -1,7 +1,7 @@
 import * as http from 'http';
 import MethodExtractor from '../../src/http/MethodExtractor';
 import TargetExtractor from '../../src/http/TargetExtractor';
-import CredentialsExtractor from '../../src/http/CredentialsExtractor';
+import CredentialsExtractor from '../../src/http/ICredentialsExtractor';
 import AuthorizationManager from '../__mocks__/AuthorizationManager';
 import ResourceStore from '../__mocks__/ResourceStore';
 import ResourceStoreRequestHandler from '../../src/http/ResourceStoreRequestHandler';

@@ -1,7 +1,7 @@
 import DeleteOperation from '../../../../src/ldp/operations/DeleteOperation';
 
 import ResourceStore from '../../../__mocks__/ResourceStore';
-import ResourceIdentifier from '../../../../src/ldp/ResourceIdentifier';
+import ResourceIdentifier from '../../../../src/ldp/IResourceIdentifier';
 import PermissionSet from '../../../../src/permissions/PermissionSet';
 
 describe('A DeleteOperation instance', () => {

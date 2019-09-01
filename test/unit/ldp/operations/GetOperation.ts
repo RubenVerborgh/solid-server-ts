@@ -1,7 +1,7 @@
 import GetOperation from '../../../../src/ldp/operations/GetOperation';
 
-import ResourceStore from '../../../../src/ldp/ResourceStore';
-import ResourceIdentifier from '../../../../src/ldp/ResourceIdentifier';
+import ResourceStore from '../../../../src/ldp/IResourceStore';
+import ResourceIdentifier from '../../../../src/ldp/IResourceIdentifier';
 import PermissionSet from '../../../../src/permissions/PermissionSet';
 
 describe('A GetOperation instance', () => {

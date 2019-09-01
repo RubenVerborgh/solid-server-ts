@@ -1,8 +1,8 @@
-import ResourceStore from '../ResourceStore';
-import ResourceIdentifier from '../ResourceIdentifier';
+import ResourceStore from '../IResourceStore';
+import ResourceIdentifier from '../IResourceIdentifier';
 import PermissionSet from '../../permissions/PermissionSet';
-import Representation from '../Representation';
-import ParsedRequestBody from '../../http/ParsedRequestBody';
+import Representation from '../IRepresentation';
+import ParsedRequestBody from '../../http/IParsedRequestBody';
 
 /**
  * Base class for LDP operations.

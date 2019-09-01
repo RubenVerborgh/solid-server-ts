@@ -4,12 +4,12 @@ import HttpError from 'standard-http-error';
 
 import TargetExtractor from './TargetExtractor';
 import MethodExtractor from './MethodExtractor';
-import CredentialsExtractor from './CredentialsExtractor';
+import CredentialsExtractor from './ICredentialsExtractor';
 import RequestBodyParser from './RequestBodyParser';
-import ParsedRequestBody from './ParsedRequestBody';
+import ParsedRequestBody from './IParsedRequestBody';
 
-import AuthorizationManager from '../auth/AuthorizationManager';
-import ResourceIdentifier from '../ldp/ResourceIdentifier';
+import AuthorizationManager from '../auth/IAuthorizationManager';
+import ResourceIdentifier from '../ldp/IResourceIdentifier';
 import LdpOperationFactory from '../ldp/operations/LdpOperationFactory';
 
 /**

@@ -1,9 +1,9 @@
 import LdpOperation from '../../../../src/ldp/operations/LdpOperation';
 
-import ResourceStore from '../../../../src/ldp/ResourceStore';
-import ResourceIdentifier from '../../../../src/ldp/ResourceIdentifier';
-import Representation from '../../../../src/ldp/Representation';
-import ParsedRequestBody from '../../../../src/http/ParsedRequestBody';
+import ResourceStore from '../../../../src/ldp/IResourceStore';
+import ResourceIdentifier from '../../../../src/ldp/IResourceIdentifier';
+import Representation from '../../../../src/ldp/IRepresentation';
+import ParsedRequestBody from '../../../../src/http/IParsedRequestBody';
 import PermissionSet from '../../../../src/permissions/PermissionSet';
 
 class MyLdpOperation extends LdpOperation {}

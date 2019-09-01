@@ -1,6 +1,6 @@
 import LdpOperation from './LdpOperation';
-import ResourceStore from '../ResourceStore';
-import ResourceIdentifier from '../ResourceIdentifier';
+import ResourceStore from '../IResourceStore';
+import ResourceIdentifier from '../IResourceIdentifier';
 
 /**
  * Performs an LDP OPTIONS operation.
